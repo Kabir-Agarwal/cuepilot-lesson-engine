@@ -64,7 +64,18 @@
       <div><label>Complexity 1–5</label><input id="defaultComplexity" type="number" min="1" max="5" value="2"></div>
     </div>
     <div class="row"><textarea id="instructions" placeholder="Free-text instructions, e.g. use roti and paper-folding examples, go slow on equal parts"></textarea></div>
-    <div class="row"><button id="generate">Generate lesson</button><span id="status"></span></div>
+    <div class="row"><input type="text" id="requestedBlocks" placeholder="Optional: exact block types, comma-separated (e.g. hook, explain, mcq, exit_ticket)"></div>
+    <div class="row">
+      <button id="generate">Generate lesson</button>
+      <label style="margin:0"><input type="checkbox" id="streamToggle" checked> stream</label>
+      <span id="status"></span>
+    </div>
+    <div class="row" id="progressWrap" hidden style="flex-direction:column;align-items:stretch">
+      <div style="background:var(--wash);border:1px solid var(--line);border-radius:8px;height:14px;overflow:hidden">
+        <div id="progressBar" style="height:100%;width:0;background:var(--accent);transition:width .25s"></div>
+      </div>
+      <small id="progressLabel"></small>
+    </div>
   </div>
 
   <div class="panel">
@@ -136,22 +147,66 @@ async function refreshMaterials() {
 $('materialSelect').onchange = () => { materialId = $('materialSelect').value || null; gateGenerate();
   $('matinfo').textContent = materialId ? 'Selected material ' + materialId : ''; };
 
+function setProgress(pct, label) {
+  $('progressWrap').hidden = false;
+  if (pct != null) $('progressBar').style.width = Math.max(0, Math.min(100, pct)) + '%';   // null = label only
+  if (label != null) $('progressLabel').textContent = label;
+}
+
+// Reads an SSE POST response, calling onEvent(obj) per event.
+async function streamPost(url, body, onEvent) {
+  const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const chunk = buf.slice(0, i); buf = buf.slice(i + 2);
+      const dl = chunk.split('\n').find(l => l.startsWith('data:'));
+      if (dl) onEvent(JSON.parse(dl.slice(5).trim()));
+    }
+  }
+}
+
+function buildSpec() {
+  const spec = { board: $('board').value, grade: $('grade').value, subject: $('subject').value };
+  ['topic','nLessons','lessonIndex','durationMins','defaultComplexity','instructions'].forEach(k => spec[k] = $(k).value);
+  const rb = $('requestedBlocks').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (rb.length) spec.requestedBlocks = rb;
+  return spec;
+}
+
 $('generate').onclick = async () => {
   if (!materialId) return say('Upload or select a material first — generation needs one.');
-  const spec = { board: $('board').value, grade: $('grade').value, subject: $('subject').value };
-  ['topic','nLessons','lessonIndex','durationMins','defaultComplexity','instructions']
-    .forEach(k => spec[k] = $(k).value);
+  const spec = buildSpec();
+  const teacherId = $('teacherId').value;
   say('Generating…', true);
   try {
-    const j = await api('/generate', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ materialId, spec, teacherId: $('teacherId').value }),
-    });
-    lesson = j.lesson;
-    paint(j.html);
-    say(`Lesson ready · ${j.timeFit.plannedMins} min planned` + (j.timeFit.ok ? '' : ' · OVER TIME'));
+    if ($('streamToggle').checked) {
+      setProgress(2, 'starting…');
+      await streamPost('/generate', { materialId, spec, teacherId, stream: true }, ev => {
+        if (ev.step === 'retrieving') setProgress(8, 'retrieving your material…');
+        else if (ev.step === 'planning') setProgress(18, 'planning the lesson…');
+        else if (ev.step === 'provider') setProgress(null, 'answered by: ' + ev.model);
+        else if (ev.step === 'block') setProgress(20 + Math.round(ev.i / ev.n * 65), `block ${ev.i}/${ev.n} — ${ev.type} (${Math.round(ev.i/ev.n*100)}%)`);
+        else if (ev.step === 'verifying') setProgress(90, 'verifier pass…');
+        else if (ev.step === 'rendering') setProgress(96, 'rendering…');
+        else if (ev.done) { lesson = ev.lesson; paint(ev.html); setProgress(100, 'done'); say(`Lesson ready · ${ev.timeFit.plannedMins} min` + (ev.timeFit.ok ? '' : ' · OVER TIME')); }
+        else if (ev.error) say('Generate failed: ' + ev.error);
+      });
+    } else {
+      const j = await api('/generate', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ materialId, spec, teacherId }) });
+      lesson = j.lesson; paint(j.html);
+      say(`Lesson ready · ${j.timeFit.plannedMins} min planned` + (j.timeFit.ok ? '' : ' · OVER TIME'));
+    }
     refreshSaved();
   } catch (e) { say('Generate failed: ' + e.message); }
+  setTimeout(() => { $('progressWrap').hidden = true; }, 1200);
   gateGenerate();
 };
 
@@ -215,8 +270,23 @@ function addEditBar(el) {
     <input type="text" placeholder="Edit this block…" data-role="prompt">
     <label style="margin:0">simple <input type="range" min="1" max="5" value="${el.querySelector('.badge')?.textContent.replace('C','') || 3}" data-role="slider"> complex</label>
     <button class="ghost" data-role="go">Edit</button>
+    <button class="ghost" data-role="up" title="Move up">↑</button>
+    <button class="ghost" data-role="down" title="Move down">↓</button>
     <small data-role="msg"></small>`;
   el.appendChild(bar);
+  const move = async dir => {
+    const ids = [...document.querySelectorAll('#lessonHost .block')].map(b => b.dataset.blockId);
+    const i = ids.indexOf(id), j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    say('Reordering…', true);
+    try {
+      const r = await api(`/lessons/${lesson.id}/reorder`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ blockIds: ids }) });
+      lesson = r.lesson; paint(r.html); say('Reordered.');
+    } catch (e) { say('Reorder failed: ' + e.message); }
+  };
+  bar.querySelector('[data-role=up]').onclick = () => move(-1);
+  bar.querySelector('[data-role=down]').onclick = () => move(1);
   bar.querySelector('[data-role=go]').onclick = async () => {
     const instruction = bar.querySelector('[data-role=prompt]').value.trim();
     const complexity = Number(bar.querySelector('[data-role=slider]').value);

@@ -1,14 +1,19 @@
-// Probes the two external services. Empty key => SKIP (never blocks). Gemini FAIL => flips
-// .env to LLM_PROVIDER=mock so the demo still works. Run: npm run checkkeys
+// Report-only key probe (never rewrites .env). Run: npm run checkkeys
+// Gemini: ListModels -> pick model -> tiny generate. 503 = "key ok, model busy".
+// Alchemyst: official SDK context.add + search; logs the FULL error body on 400.
 import 'dotenv/config';
-import fs from 'node:fs';
+import { resolveModelChain } from '../src/llm.js';
+import { errorBody } from '../src/rag.js';
 
 const line = (label, msg) => console.log(`${label.padEnd(10)} ${msg}`);
 
 async function checkGemini() {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return line('GEMINI', 'SKIP — key empty; runtime uses mock. Paste GEMINI_API_KEY in .env to enable.');
-  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+
+  const chain = await resolveModelChain();
+  line('GEMINI', `model chain (ListModels): ${chain.join(' → ')}`);
+  const model = chain[0];
   const t0 = Date.now();
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
@@ -16,47 +21,52 @@ async function checkGemini() {
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the word OK.' }] }] }),
     });
     const ms = Date.now() - t0;
-    if (!res.ok) { forceMock(); return line('GEMINI', `FAIL — http ${res.status} (${(await res.text()).slice(0, 120)}). Set LLM_PROVIDER=mock in .env (done).`); }
+    if (res.status === 503 || res.status === 429) {
+      return line('GEMINI', `KEY OK, MODEL BUSY — ${model} returned ${res.status} (high demand). Retry later; runtime degrades to mock meanwhile.`);
+    }
+    if (!res.ok) return line('GEMINI', `FAIL — http ${res.status}: ${(await res.text()).slice(0, 160)}`);
     const j = await res.json();
     const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') ?? '';
-    line('GEMINI', `PASS — model ${model}, ${ms}ms, replied: ${text.trim().slice(0, 40)}`);
-  } catch (e) { forceMock(); line('GEMINI', `FAIL — ${e.message}. Set LLM_PROVIDER=mock in .env (done).`); }
-}
-
-function forceMock() {
-  try {
-    if (!fs.existsSync('.env')) return;
-    const env = fs.readFileSync('.env', 'utf8');
-    fs.writeFileSync('.env', env.replace(/^LLM_PROVIDER=.*$/m, 'LLM_PROVIDER=mock'));
-  } catch { /* ignore */ }
+    line('GEMINI', `PASS — ${model}, ${ms}ms, replied: ${text.trim().slice(0, 40)}`);
+  } catch (e) { line('GEMINI', `FAIL — ${e.message}`); }
 }
 
 async function checkAlchemyst() {
   const key = process.env.ALCHEMYST_AI_API_KEY;
   if (!key) return line('ALCHEMYST', 'SKIP — key empty; RAG uses local keyword fallback (fully functional).');
-  const base = process.env.ALCHEMYST_BASE_URL || 'https://platform-backend.getalchemystai.com/api/v1';
-  const probe = `check_keys probe ${Date.now()}: the mitochondrion is the powerhouse of the cell`;
+
+  let AlchemystAI;
+  try { ({ AlchemystAI } = await import('@alchemystai/sdk')); }
+  catch (e) { return line('ALCHEMYST', `SDK missing (${e.message}); run "npm i @alchemystai/sdk". Local fallback continues.`); }
+
+  const c = new AlchemystAI({ apiKey: key });
+  const probe = `check_keys probe ${process.pid}: the mitochondrion is the powerhouse of the cell`;
   try {
-    const add = await fetch(`${base}/context/add`, {
-      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ documents: [{ content: probe }], source: 'check_keys', context_type: 'resource', scope: 'internal' }),
+    await c.v1.context.add({
+      documents: [{ content: probe }], context_type: 'resource', source: 'check_keys', scope: 'internal',
+      metadata: { fileName: 'check_keys.txt', fileType: 'text/plain', fileSize: probe.length, lastModified: new Date().toISOString() },
     });
-    line('ALCHEMYST', add.ok ? 'context.add PASS' : `context.add FAIL — http ${add.status}; local fallback continues.`);
-    const search = await fetch(`${base}/context/search`, {
-      method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ query: 'powerhouse of the cell', minimum_similarity_score: 0.5, scope: 'internal' }),
-    });
-    line('ALCHEMYST', search.ok ? 'context.search PASS' : `context.search FAIL — http ${search.status}; local fallback continues.`);
-    // Informational: does this grant expose chat-completions?
+    line('ALCHEMYST', 'context.add PASS');
+  } catch (e) { line('ALCHEMYST', `context.add FAIL — ${errorBody(e)}`); }
+
+  try {
+    const r = await c.v1.context.search({ query: 'powerhouse of the cell', minimum_similarity_threshold: 0.5, similarity_threshold: 0.5, scope: 'internal' });
+    const n = (r?.contexts || r?.results || r?.data || []).length;
+    line('ALCHEMYST', `context.search PASS — ${n} hit(s)`);
+  } catch (e) { line('ALCHEMYST', `context.search FAIL — ${errorBody(e)}`); }
+
+  // Informational: does the grant expose chat completions? (We only use context.add/search.)
+  try {
+    const base = process.env.ALCHEMYST_BASE_URL || 'https://platform-backend.getalchemystai.com/api/v1';
     const chat = await fetch(`${base}/chat/completions`, {
       method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({ messages: [{ role: 'user', content: 'ping' }] }),
-    }).catch(() => null);
-    line('ALCHEMYST', chat ? `chat-completions: http ${chat.status} (informational — we only use context.add/search)` : 'chat-completions: no response (informational)');
-  } catch (e) { line('ALCHEMYST', `error — ${e.message}; local fallback continues.`); }
+    });
+    line('ALCHEMYST', `chat-completions: http ${chat.status} (informational — not used by the engine)`);
+  } catch { line('ALCHEMYST', 'chat-completions: no response (informational)'); }
 }
 
-console.log('--- key check ---');
+console.log('--- key check (report-only; .env is never modified) ---');
 await checkGemini();
 await checkAlchemyst();
-console.log('-----------------');
+console.log('------------------------------------------------------');

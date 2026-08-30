@@ -6,27 +6,47 @@ import { prefsDirective } from './prefs.js';
 
 const DEFAULT_SHAPE = ['hook', 'explain', 'number_line', 'bar_compare', 'sequence', 'mcq', 'activity', 'exit_ticket', 'teacher_notes'];
 
+const intentFor = (type, spec) => ({
+  hook: `A real-life opening question about ${spec.topic} for grade ${spec.grade}`,
+  explain: `Explain the core idea of ${spec.topic} using the teacher's own examples`,
+  number_line: `Place ${spec.topic} values on a number line from the material`,
+  bar_compare: `Compare quantities from the ${spec.topic} material as bars`,
+  sequence: `The hands-on steps for ${spec.topic} described in the material`,
+  mcq: `One check-understanding question on the commonest ${spec.topic} mistake`,
+  activity: `A pair activity on ${spec.topic} using materials named in the chapter`,
+  exit_ticket: `Two short exit questions on ${spec.topic}`,
+  teacher_notes: `Misconceptions and pacing notes for ${spec.topic}`,
+}[type] || `A ${type} block about ${spec.topic}`);
+
 function mockPlan(spec) {
-  const t = spec.topic;
-  const intents = {
-    hook: `A real-life opening question about ${t} for grade ${spec.grade}`,
-    explain: `Explain the core idea of ${t} using the teacher's own examples`,
-    number_line: `Place ${t} values on a number line from the material`,
-    bar_compare: `Compare quantities from the ${t} material as bars`,
-    sequence: `The hands-on steps for ${t} described in the material`,
-    mcq: `One check-understanding question on the commonest ${t} mistake`,
-    activity: `A pair activity on ${t} using materials named in the chapter`,
-    exit_ticket: `Two short exit questions on ${t}`,
-    teacher_notes: `Misconceptions and pacing notes for ${t}`,
-  };
   return {
-    title: `${t}: Lesson ${spec.lessonIndex} of ${spec.nLessons}`,
-    blocks: DEFAULT_SHAPE.map(type => ({ type, intent: intents[type] })),
+    title: `${spec.topic}: Lesson ${spec.lessonIndex} of ${spec.nLessons}`,
+    blocks: DEFAULT_SHAPE.map(type => ({ type, intent: intentFor(type, spec) })),
   };
 }
 
 /** Plans the block spine for ONE lesson in a sequence. Returns {title, blocks:[{type,intent,estMinutes}]}. */
 export async function plan(spec, contextChunks, prefs) {
+  // Teammate spec D1: if the teacher pinned an exact block set, honour it verbatim (no LLM
+  // planning of types, no time-dropping) so the generated set == the requested set.
+  if (spec.requestedBlocks?.length) {
+    let title = `${spec.topic}: Lesson ${spec.lessonIndex} of ${spec.nLessons}`;
+    try {
+      const r = await completeJSON({
+        system: 'You title school lessons. Output ONLY JSON {"title": string}.',
+        prompt: `Give a short lesson title for lesson ${spec.lessonIndex} of ${spec.nLessons} on "${spec.topic}", grade ${spec.grade}.`,
+        mock: { title },
+      });
+      if (r?.title) title = String(r.title);
+    } catch { /* keep default title */ }
+    return {
+      title,
+      blocks: spec.requestedBlocks.map(type => ({ type, intent: intentFor(type, spec), estMinutes: estMinutesFor(type, spec.grade) })),
+      droppedForTime: 0,
+      requested: true,
+    };
+  }
+
   const context = contextChunks.map((c, i) => `[${i + 1}] (${c.attribution_string})\n${c.content}`).join('\n\n');
   const system = 'You plan school lessons. You output ONLY JSON. You never write HTML.';
   const prompt = `Plan lesson ${spec.lessonIndex} of ${spec.nLessons} on "${spec.topic}".

@@ -1,9 +1,46 @@
 // Single LLM door. Sequential calls with a 500ms gap, 429/5xx backoff x3,
 // one JSON repair-retry, and a mock provider so the whole app runs with no network.
 import 'dotenv/config';
+import { emitStep } from './progress.js';
 
 const GAP_MS = 500;
 const MAX_RETRIES = 3;
+
+// Preferred Gemini models, best first. The real list is discovered via ListModels;
+// this only sets the ORDER — nothing here is hardcoded as "the" model.
+const MODEL_PREF = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
+let modelChain = null;   // resolved [chosen, ...fallbacks], cached per process
+
+function rankFlash(names) {
+  // Newest flash last-resort: sort by the version number embedded in the name, desc.
+  const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)-flash/); return m ? parseFloat(m[1]) : 0; };
+  return names.filter(n => /flash/.test(n) && !/(tts|image|omni|preview)/.test(n)).sort((a, b) => ver(b) - ver(a));
+}
+
+/** Discover available generateContent models and order them by preference. Cached. */
+export async function resolveModelChain() {
+  if (modelChain) return modelChain;
+  if (process.env.GEMINI_MODEL) { modelChain = [process.env.GEMINI_MODEL]; return modelChain; }
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
+    if (!res.ok) throw new Error(`ListModels ${res.status}`);
+    const j = await res.json();
+    const avail = (j.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => m.name.replace('models/', ''));
+    const ordered = [];
+    for (const p of MODEL_PREF) if (avail.includes(p) && !ordered.includes(p)) ordered.push(p);
+    for (const n of rankFlash(avail)) if (!ordered.includes(n)) ordered.push(n);
+    modelChain = ordered.length ? ordered : MODEL_PREF;
+  } catch (e) {
+    console.warn('[llm] ListModels failed, using preference defaults:', e.message);
+    modelChain = MODEL_PREF;
+  }
+  console.log('[llm] Gemini model chain:', modelChain.join(' → '));
+  return modelChain;
+}
+
+export const getModelChain = () => modelChain;
 
 let lastPrompt = null;
 let lastRaw = null;
@@ -47,8 +84,7 @@ export function extractJSON(text) {
   throw new Error('unterminated JSON in model output');
 }
 
-async function callGemini(system, prompt) {
-  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+async function callGemini(system, prompt, model) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
   const res = await fetch(url, {
     method: 'POST',
@@ -92,19 +128,56 @@ async function callAnthropic(system, prompt) {
   return j.content?.map(c => c.text || '').join('') ?? '';
 }
 
-async function callWithBackoff(system, prompt) {
-  const fn = provider() === 'anthropic' ? callAnthropic : callGemini;
+async function callModelWithBackoff(model, system, prompt) {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await fn(system, prompt);
+      return await callGemini(system, prompt, model);
     } catch (e) {
       const retryable = e.status === 429 || (e.status >= 500 && e.status < 600) || e.name === 'TypeError';
       if (!retryable || attempt >= MAX_RETRIES - 1) throw e;
       const wait = 1000 * 2 ** attempt;
-      console.warn(`[llm] ${e.message} — retrying in ${wait}ms`);
+      console.warn(`[llm] ${model} ${e.message} — retrying in ${wait}ms`);
       await sleep(wait);
     }
   }
+}
+
+/**
+ * Gemini call across the model chain: try chosen model (backoff x3) → on failure try the
+ * next model in the chain once each → the last error propagates. Emits which model answered.
+ */
+async function callGeminiChain(system, prompt) {
+  const chain = await resolveModelChain();
+  let lastErr;
+  for (const model of chain) {
+    try {
+      const out = await callModelWithBackoff(model, system, prompt);
+      emitStep({ step: 'provider', provider: 'gemini', model });
+      return out;
+    } catch (e) {
+      lastErr = e;
+      console.warn(`[llm] model ${model} failed (${e.status || e.message}) — trying next in chain`);
+    }
+  }
+  throw lastErr || new Error('all Gemini models failed');
+}
+
+async function callWithBackoff(system, prompt) {
+  if (provider() === 'anthropic') {
+    const out = await (async () => {
+      for (let attempt = 0; ; attempt++) {
+        try { return await callAnthropic(system, prompt); }
+        catch (e) {
+          const retryable = e.status === 429 || (e.status >= 500 && e.status < 600) || e.name === 'TypeError';
+          if (!retryable || attempt >= MAX_RETRIES - 1) throw e;
+          await sleep(1000 * 2 ** attempt);
+        }
+      }
+    })();
+    emitStep({ step: 'provider', provider: 'anthropic', model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5' });
+    return out;
+  }
+  return callGeminiChain(system, prompt);
 }
 
 /**
@@ -118,6 +191,7 @@ export function completeJSON({ system = 'You are a helpful curriculum assistant.
     stats.promptChars += lastPrompt.length;
 
     if (provider() === 'mock') {
+      emitStep({ step: 'provider', provider: 'mock', model: 'mock' });
       lastRaw = JSON.stringify(mock ?? null);
       stats.completionChars += lastRaw.length;
       return structuredClone(mock ?? null);
@@ -127,23 +201,33 @@ export function completeJSON({ system = 'You are a helpful curriculum assistant.
     if (since < GAP_MS) await sleep(GAP_MS - since);
 
     const t0 = Date.now();
-    let raw = await callWithBackoff(system, prompt);
-    lastCallAt = Date.now();
-    lastRaw = raw;
     try {
-      const out = extractJSON(raw);
-      stats.completionChars += raw.length;
-      stats.ms += Date.now() - t0;
-      return out;
-    } catch {
-      // one repair-retry
-      await sleep(GAP_MS);
-      raw = await callWithBackoff(system, `${prompt}\n\nYour previous reply was not valid JSON. Reply with ONLY the JSON value, no prose, no code fences.`);
+      let raw = await callWithBackoff(system, prompt);
       lastCallAt = Date.now();
       lastRaw = raw;
-      stats.completionChars += raw.length;
-      stats.ms += Date.now() - t0;
-      return extractJSON(raw);
+      try {
+        const out = extractJSON(raw);
+        stats.completionChars += raw.length;
+        stats.ms += Date.now() - t0;
+        return out;
+      } catch {
+        // one repair-retry
+        await sleep(GAP_MS);
+        raw = await callWithBackoff(system, `${prompt}\n\nYour previous reply was not valid JSON. Reply with ONLY the JSON value, no prose, no code fences.`);
+        lastCallAt = Date.now();
+        lastRaw = raw;
+        stats.completionChars += raw.length;
+        stats.ms += Date.now() - t0;
+        return extractJSON(raw);
+      }
+    } catch (e) {
+      // Last rung of the chain: every model failed (429/503/etc). Serve the mock so a
+      // demo never dies mid-generation; the provider event shows it was the fallback.
+      console.warn(`[llm] all providers failed (${e.status || e.message}) — serving mock for this call`);
+      emitStep({ step: 'provider', provider: 'mock', model: 'mock', reason: String(e.status || e.message) });
+      lastRaw = JSON.stringify(mock ?? null);
+      stats.completionChars += lastRaw.length;
+      return structuredClone(mock ?? null);
     }
   };
   // ponytail: one global chain = strictly sequential calls. Per-key queues if we ever go multi-tenant.

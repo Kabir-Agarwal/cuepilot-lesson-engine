@@ -53,66 +53,100 @@ export function loadChunks(materialId, chunks) {
   store.set(materialId, chunks);
 }
 
+// Lazily build the official SDK client (only when a key is present).
+let _client;
+async function client() {
+  if (_client !== undefined) return _client;
+  const key = process.env.ALCHEMYST_AI_API_KEY;
+  if (!key) return (_client = null);
+  try {
+    const { AlchemystAI } = await import('@alchemystai/sdk');
+    _client = new AlchemystAI({ apiKey: key });
+  } catch (e) {
+    console.warn('[rag] @alchemystai/sdk unavailable, using raw HTTP:', e.message);
+    _client = null;
+  }
+  return _client;
+}
+
+// Full body of an SDK/HTTP error, so a 400 is diagnosable (last time it was truncated).
+export function errorBody(e) {
+  const parts = [e.status && `status ${e.status}`, e.message];
+  if (e.error) parts.push(typeof e.error === 'string' ? e.error : JSON.stringify(e.error));
+  if (e.response?.data) parts.push(JSON.stringify(e.response.data));
+  return parts.filter(Boolean).join(' | ');
+}
+
 async function alchemystAdd(chunks) {
   const key = process.env.ALCHEMYST_AI_API_KEY;
   if (!key || !chunks.length) return;
   ragStatus.alchemystTried = true;
-  try {
-    const res = await fetch(`${ALCHEMYST_BASE}/context/add`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        documents: chunks.map(c => ({ content: c.content, metadata: c })),
-        source: chunks[0].source_name,
-        context_type: 'resource',
-        scope: 'internal',
-        groupName: chunks[0].source_id,   // one group per material — keeps retrieval scoped
-        metadata: { fileName: chunks[0].source_name, fileType: 'text/plain', groupName: chunks[0].source_id },
-      }),
-    });
-    ragStatus.alchemystAdd = res.ok ? 'ok' : `http ${res.status}`;
-    if (!res.ok) console.warn('[rag] alchemyst add failed:', res.status, (await res.text()).slice(0, 200));
-  } catch (e) {
-    ragStatus.alchemystAdd = 'error';
-    ragStatus.lastError = e.message;
-    console.warn('[rag] alchemyst add error, using local index:', e.message);
+  const c = await client();
+  const first = chunks[0];
+  const payload = {
+    documents: chunks.map(ch => ({ content: ch.content })),
+    context_type: 'resource',
+    source: first.source_id,                                   // group per material
+    scope: 'internal',
+    metadata: {
+      fileName: first.source_name,
+      fileType: 'text/plain',
+      fileSize: chunks.reduce((n, ch) => n + ch.content.length, 0),
+      lastModified: new Date().toISOString(),   // required by the API (from the 400 body)
+      source_id: first.source_id,
+    },
+  };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (c) await c.v1.context.add(payload);
+      else await rawPost('/context/add', { ...payload, groupName: first.source_id });
+      ragStatus.alchemystAdd = 'ok';
+      return;
+    } catch (e) {
+      ragStatus.alchemystAdd = `error: ${errorBody(e)}`;
+      ragStatus.lastError = errorBody(e);
+      console.warn(`[rag] alchemyst add failed (attempt ${attempt + 1}): ${errorBody(e)}`);
+    }
   }
+  console.warn('[rag] alchemyst add giving up — local index is the shipped path.');
 }
 
 async function alchemystSearch(query, materialIds) {
   const key = process.env.ALCHEMYST_AI_API_KEY;
   if (!key) return null;
   ragStatus.alchemystTried = true;
-  try {
-    const res = await fetch(`${ALCHEMYST_BASE}/context/search`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        query, similarity_threshold: 0.7, minimum_similarity_score: 0.7, scope: 'internal',
-        ...(materialIds?.length === 1 ? { groupName: materialIds[0] } : {}),
-      }),
-    });
-    if (!res.ok) {
-      ragStatus.alchemystSearch = `http ${res.status}`;
-      console.warn('[rag] alchemyst search failed:', res.status);
-      return null;
+  const c = await client();
+  const params = { query, minimum_similarity_threshold: 0.7, similarity_threshold: 0.7, scope: 'internal',
+    ...(materialIds?.length === 1 ? { source: materialIds[0] } : {}) };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const j = c ? await c.v1.context.search(params) : await rawPost('/context/search', params);
+      ragStatus.alchemystSearch = 'ok';
+      const hits = j?.contexts || j?.results || j?.data || [];
+      if (!Array.isArray(hits) || !hits.length) return null;
+      return hits.map(h => ({
+        ...meta(h.metadata || {}),
+        content: h.content || h.text || '',
+        chunk_index: h.metadata?.chunk_index ?? 0,
+        score: Number(h.score ?? h.similarity ?? 0.7),
+      })).filter(h => h.content);
+    } catch (e) {
+      ragStatus.alchemystSearch = `error: ${errorBody(e)}`;
+      ragStatus.lastError = errorBody(e);
+      console.warn(`[rag] alchemyst search failed (attempt ${attempt + 1}): ${errorBody(e)}`);
     }
-    ragStatus.alchemystSearch = 'ok';
-    const j = await res.json();
-    const hits = j.contexts || j.results || j.data || [];
-    if (!Array.isArray(hits) || !hits.length) return null;
-    return hits.map(h => ({
-      ...meta(h.metadata || {}),
-      content: h.content || h.text || '',
-      chunk_index: h.metadata?.chunk_index ?? 0,
-      score: Number(h.score ?? h.similarity ?? 0.7),
-    })).filter(h => h.content);
-  } catch (e) {
-    ragStatus.alchemystSearch = 'error';
-    ragStatus.lastError = e.message;
-    console.warn('[rag] alchemyst search error, using local index:', e.message);
-    return null;
   }
+  return null;
+}
+
+async function rawPost(path, body) {
+  const res = await fetch(`${ALCHEMYST_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.ALCHEMYST_AI_API_KEY}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw Object.assign(new Error(`http ${res.status}: ${(await res.text()).slice(0, 500)}`), { status: res.status });
+  return res.json();
 }
 
 const STOP = new Set('a an the of to in on for and or is are was were be with as at by it its this that these those from how what why do does'.split(' '));

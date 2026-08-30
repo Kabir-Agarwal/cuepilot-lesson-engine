@@ -6,13 +6,15 @@ import { ingest } from '../src/rag.js';
 import { save } from '../src/store.js';
 import { newId } from '../src/schema.js';
 import { generateLesson, editBlock, editLesson } from '../src/engine.js';
-import { stats } from '../src/llm.js';
+import { stats, resolveModelChain } from '../src/llm.js';
 
 if (!process.env.GEMINI_API_KEY) {
   console.log('SKIP — GEMINI_API_KEY is empty.');
   console.log('To run later: paste GEMINI_API_KEY into .env, keep LLM_PROVIDER=gemini, then `npm run realrun`.');
   process.exit(0);
 }
+if (!process.env.LLM_PROVIDER) process.env.LLM_PROVIDER = 'gemini';   // real run needs the live provider
+console.log('model chain:', (await resolveModelChain()).join(' → '));
 
 const snap = () => ({ calls: stats.calls, ms: stats.ms, promptChars: stats.promptChars, completionChars: stats.completionChars });
 const delta = (a, b) => ({ calls: b.calls - a.calls, ms: b.ms - a.ms, approxPromptTokens: Math.round((b.promptChars - a.promptChars) / 4), approxCompletionTokens: Math.round((b.completionChars - a.completionChars) / 4) });
@@ -52,5 +54,14 @@ const el = await editLesson(lesson.id, 'add an assessment at the end');
 report.editLesson = delta(s, snap());
 console.log('editLesson (add assessment):', report.editLesson, '| changed:', el.changedBlockIds);
 
-fs.writeFileSync('fixtures/real-run.json', JSON.stringify({ ranAt: new Date().toISOString(), report, lesson: el.lesson }, null, 2));
+// One generation with the verifier live (section G).
+process.env.VERIFY_PASS = 'on';
+s = snap();
+const verified = await generateLesson(
+  { board: 'CBSE', grade: '4', subject: 'Mathematics', topic: 'Fractions', nLessons: 3, lessonIndex: 2, durationMins: 40, defaultComplexity: 3, instructions: '' },
+  materialId, 'demo-teacher');
+report.verifiedGenerate = delta(s, snap());
+console.log('verified generate:', report.verifiedGenerate, '| verified:', verified.verified, '| blocks:', verified.blocks.length);
+
+fs.writeFileSync('fixtures/real-run.json', JSON.stringify({ ranAt: new Date().toISOString(), report, lesson: el.lesson, verifiedLesson: verified }, null, 2));
 console.log('saved fixtures/real-run.json  (token counts are approximate: chars/4)');

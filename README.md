@@ -21,6 +21,22 @@ npm run seed             # optional: seed one NCERT chapter (skip-on-fail)
 The owner pastes `GEMINI_API_KEY` / `ALCHEMYST_AI_API_KEY` into `.env` by hand. With no key the
 runtime falls back to `mock`: same shapes, canned deterministic content, zero network.
 
+**`.env` keys** (all optional; empty = mock/local fallback):
+```
+LLM_PROVIDER=gemini        # gemini | anthropic | mock
+GEMINI_API_KEY=            # owner pastes
+ALCHEMYST_AI_API_KEY=      # owner pastes; empty = local keyword RAG
+ANTHROPIC_API_KEY=
+VERIFY_PASS=               # "on" enables the verifier agent (default off)
+VERIFY_MAX_CYCLES=1        # verifier passes, hard-capped at 3
+```
+
+**Model selection is automatic** — the engine calls Gemini ListModels and picks the best available
+flash model (`gemini-flash-latest` → `gemini-flash-lite-latest` → newest `*flash*`), falling through
+the chain and finally to mock on 429/503. Nothing is hardcoded; `GET /health` shows the resolved chain.
+
+**Streaming, reorder, multi-resource, requested blocks, verifier** — see [CONTRACT.md](CONTRACT.md).
+
 ## How it works
 
 `ingest` → 1200-char chunks (15% overlap) with authority-tagged metadata. `generateLesson` plans a

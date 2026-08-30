@@ -49,12 +49,26 @@ Omit `teacherId` for all materials.
 ### `POST /generate`
 ```json
 { "materialId": "mat_ab12cd34",
+  "materialIds": ["mat_ab12cd34", "mat_ef56gh78"],
   "teacherId": "demo-teacher",
+  "stream": false,
   "spec": { "board":"CBSE","grade":"4","subject":"Mathematics","topic":"Fractions",
             "nLessons":3,"lessonIndex":1,"durationMins":40,"defaultComplexity":3,
-            "instructions":"use roti and paper-folding examples" } }
+            "instructions":"use roti and paper-folding examples",
+            "requestedBlocks":["hook","explain","mcq","exit_ticket"] } }
 ```
-→ `{ lesson, html, timeFit }`. `html` is the body-only rendered lesson (embed as-is). `400 MATERIAL_REQUIRED` if `materialId` is missing/unknown.
+→ `{ lesson, html, timeFit }`. `html` is the body-only rendered lesson (embed as-is). `400 MATERIAL_REQUIRED` if `materialId`/`materialIds` missing or unknown.
+
+- **`materialIds[]`** (multi-resource): pass several material ids instead of one. They must share the same `teacherId` and `subject`, else `400 MATERIAL_MISMATCH`. Retrieval merges across them but stays strictly scoped to that set. A single `materialId` behaves exactly as before.
+- **`spec.requestedBlocks[]`** (optional): pin the exact block types, in order. Unknown type → `400 BAD_BLOCK_TYPE`. When present, the generated set equals the requested set (no time-dropping).
+- **`stream: true`** → the response is an **SSE** stream (`content-type: text/event-stream`). Events (one JSON per `data:` line):
+  `{"step":"retrieving"}` → `{"step":"planning"}` → `{"step":"provider","model":"gemini-flash-latest"}` → `{"step":"block","i":k,"n":total,"type":"..."}` (per block) → `{"step":"verifying","cycle":1}` (only if the verifier is on) → `{"step":"rendering"}` → `{"done":true,"lessonId":"...","lesson":{...},"html":"...","timeFit":{...}}`. On failure: `{"error":"...","code":"..."}`. The `provider` event names which model (or `mock`) actually answered.
+
+### `POST /lessons/:id/reorder`
+```json
+{ "blockIds": ["b_2","b_0","b_1", "..."] }
+```
+Must be a **permutation** of the lesson's existing block ids (`400 BAD_PERMUTATION` otherwise). No LLM — same block objects, new order, persisted. → `{ lesson, html, timeFit }`. The UI does the drag-drop and calls this to save the new order.
 
 ### `POST /edit-block`  — Path A (per block)
 ```json
@@ -65,12 +79,13 @@ stay byte-identical. → `{ block, blockHtml, timeFit }`. Swap just that block's
 
 ### `POST /edit-lesson`  — Path B (conversational)
 ```json
-{ "lessonId":"lsn_..","instruction":"add an assessment at the end" }
+{ "lessonId":"lsn_..","instruction":"add an assessment at the end", "stream": false }
 ```
 Handles "add an assessment at the end", "remove blocks 5 and 6", "make suitable for Grade 4", etc.
 The model sees **only the outline** (ids/types/summaries) and returns surgical ops; blocks not named in
 the ops are **never regenerated**. → `{ lesson, html, changedBlockIds, timeFit, ops, note? }`.
-Re-render the whole `html`, or flash just `changedBlockIds`.
+Re-render the whole `html`, or flash just `changedBlockIds`. With `stream:true` it emits the same SSE
+events (each op as `{"step":"op",...}`) ending in the `done` event above.
 
 ### `POST /lessons/:id/duplicate` → `{ lesson }` (fresh ids, title + " (copy)")
 ### `GET /lessons` → `{ lessons: [{id,title,grade,subject,topic,blocks,durationMins}] }`
@@ -144,6 +159,26 @@ For a per-block edit, replace only that block's node using `blockHtml` (match `[
 
 Set `LLM_PROVIDER=mock` (or just leave keys empty). Every endpoint returns valid, deterministic content
 with no network — safe for the demo if the internet or a key dies mid-presentation.
+
+## Architecture
+
+```
+orchestrator (engine.generateLesson)
+  → context pipeline (rag.retrieve — per block, authority-weighted, strictly material-scoped)
+  → planner (block spine for THIS lesson; honours spec.requestedBlocks verbatim)
+  → sequential block agents (filler.fillBlock — fresh retrieval + citations per block)
+  → validation (schema.validateBlock on every block)
+     → optional verifier agent (VERIFY_PASS=on): reviews the OUTLINE, emits edit ops
+       through the SAME op executor → untouched blocks byte-identical → re-fit time
+  → deterministic renderers (document / slides)  ·  iteration loop = editBlock / editLesson / reorder
+```
+
+- **LLM model chain** — on first use the engine calls Gemini **ListModels** and orders the available
+  `generateContent` models: `gemini-flash-latest` → `gemini-flash-lite-latest` → newest `*flash*`. Nothing
+  is hardcoded. Per call: chosen model (backoff ×3 on 429/503) → next model in the chain once → **mock**.
+  The `provider` SSE event reports which one answered. `GET /health` returns the resolved `modelChain`.
+- **Verifier flag** — `VERIFY_PASS=on` (default off) with `VERIFY_MAX_CYCLES=1` (hard cap 3). Off by default,
+  so ordinary generation is unchanged. These belong in `.env`.
 
 ## Stretch status
 - Slideshow mode (`?format=slides`), animated mode, roadmap endpoint, NCERT seed — see README "Stretch".

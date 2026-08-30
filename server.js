@@ -7,10 +7,12 @@ import { ingest, ragStatus } from './src/rag.js';
 import { newId } from './src/schema.js';
 import { save, load, list } from './src/store.js';
 import { getPrefs, putPrefs } from './src/prefs.js';
-import { generateLesson, editBlock, editLesson, duplicateLesson, roadmap } from './src/engine.js';
+import { generateLesson, editBlock, editLesson, duplicateLesson, roadmap, reorderBlocks } from './src/engine.js';
 import { renderLesson, renderLessonBody, renderBlock, STYLES, SCRIPT } from './src/render/index.js';
 import { renderSlides } from './src/render/slides.js';
-import { provider, stats } from './src/llm.js';
+import { provider, stats, resolveModelChain, getModelChain } from './src/llm.js';
+import { withProgress } from './src/progress.js';
+import { verifyEnabled } from './src/verifier.js';
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -27,7 +29,7 @@ app.get('/lesson.css', (_req, res) => res.type('css').send(STYLES));
 app.get('/lesson.js', (_req, res) => res.type('js').send(SCRIPT));
 
 app.get('/health', (_req, res) =>
-  res.json({ ok: true, provider: provider(), llm: stats, rag: ragStatus }));
+  res.json({ ok: true, provider: provider(), modelChain: getModelChain(), verify: verifyEnabled(), llm: stats, rag: ragStatus }));
 
 app.post('/ingest', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) throw Object.assign(new Error('no file uploaded (field name: file)'), { status: 400 });
@@ -68,10 +70,35 @@ app.get('/materials', (req, res) => {
   res.json({ materials: mats });
 });
 
+// Server-Sent Events helper: returns an `emit(event)` bound to the response.
+function sseStart(res) {
+  res.writeHead(200, {
+    'content-type': 'text/event-stream',
+    'cache-control': 'no-cache',
+    connection: 'keep-alive',
+    'x-accel-buffering': 'no',
+  });
+  return event => res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
 app.post('/generate', wrap(async (req, res) => {
-  const { materialId, spec = {}, teacherId = 'default' } = req.body || {};
-  const lesson = await generateLesson(spec, materialId, teacherId);
-  res.json({ lesson, html: renderLessonBody(lesson), timeFit: lesson.timeFit });
+  const { materialId, materialIds, spec = {}, teacherId = 'default', stream } = req.body || {};
+
+  if (!stream) {
+    const lesson = await generateLesson(spec, materialId, teacherId, materialIds);
+    return res.json({ lesson, html: renderLessonBody(lesson), timeFit: lesson.timeFit });
+  }
+
+  // Streaming mode: progress events, then a final done event carrying the lesson + html.
+  const emit = sseStart(res);
+  try {
+    const lesson = await withProgress(emit, () => generateLesson(spec, materialId, teacherId, materialIds));
+    emit({ step: 'rendering' });
+    emit({ done: true, lessonId: lesson.id, lesson, html: renderLessonBody(lesson), timeFit: lesson.timeFit });
+  } catch (e) {
+    emit({ error: e.message, code: e.code });
+  }
+  res.end();
 }));
 
 app.post('/edit-block', wrap(async (req, res) => {
@@ -81,16 +108,33 @@ app.post('/edit-block', wrap(async (req, res) => {
 }));
 
 app.post('/edit-lesson', wrap(async (req, res) => {
-  const { lessonId, instruction } = req.body || {};
-  const out = await editLesson(lessonId, instruction);
-  res.json({
-    lesson: out.lesson, html: renderLessonBody(out.lesson),
-    changedBlockIds: out.changedBlockIds, timeFit: out.timeFit, ops: out.ops, note: out.note,
-  });
+  const { lessonId, instruction, stream } = req.body || {};
+  if (!stream) {
+    const out = await editLesson(lessonId, instruction);
+    return res.json({
+      lesson: out.lesson, html: renderLessonBody(out.lesson),
+      changedBlockIds: out.changedBlockIds, timeFit: out.timeFit, ops: out.ops, note: out.note,
+    });
+  }
+  const emit = sseStart(res);
+  try {
+    const out = await withProgress(emit, () => editLesson(lessonId, instruction));
+    emit({ done: true, lessonId: out.lesson.id, lesson: out.lesson, html: renderLessonBody(out.lesson),
+      changedBlockIds: out.changedBlockIds, timeFit: out.timeFit, ops: out.ops, note: out.note });
+  } catch (e) {
+    emit({ error: e.message, code: e.code });
+  }
+  res.end();
 }));
 
 app.post('/lessons/:id/duplicate', wrap(async (req, res) =>
   res.json({ lesson: duplicateLesson(req.params.id) })));
+
+// Teammate spec D3: persist a drag-drop reorder. No LLM.
+app.post('/lessons/:id/reorder', wrap(async (req, res) => {
+  const lesson = reorderBlocks(req.params.id, req.body?.blockIds);
+  res.json({ lesson, html: renderLessonBody(lesson), timeFit: lesson.timeFit });
+}));
 
 app.get('/lessons', (_req, res) => res.json({
   lessons: list('lessons')
@@ -119,5 +163,8 @@ export { app };
 // Only bind a port when run directly (node server.js), so tests can import the app.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = process.env.PORT || 3000;
-  app.listen(port, () => console.log(`Lesson engine on http://localhost:${port} (provider: ${provider()})`));
+  app.listen(port, () => {
+    console.log(`Lesson engine on http://localhost:${port} (provider: ${provider()}, verify: ${verifyEnabled() ? 'on' : 'off'})`);
+    if (provider() === 'gemini') resolveModelChain().catch(() => {});   // warm the model chain
+  });
 }
