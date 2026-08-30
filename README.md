@@ -37,6 +37,11 @@ the chain and finally to mock on 429/503. Nothing is hardcoded; `GET /health` sh
 
 **Streaming, reorder, multi-resource, requested blocks, verifier** — see [CONTRACT.md](CONTRACT.md).
 
+**Two independent sliders.** `defaultComplexity` 1–5 sets *language depth*; `visualDemand` 1–5 sets
+*representation density* (1 = text-first → 5 = visual-first, shifting the block-type mix). Both are
+lesson-wide on `/generate` and per-block on `/edit-block` (a high per-block `visualDemand` can even
+retype a prose block into a representation). Teacher defaults: `defaultComplexity`, `defaultVisualDemand`.
+
 ## How it works
 
 `ingest` → 1200-char chunks (15% overlap) with authority-tagged metadata. `generateLesson` plans a

@@ -61,7 +61,8 @@
       <div><label>How many lessons</label><input id="nLessons" type="number" min="1" value="3"></div>
       <div><label>This is lesson #</label><input id="lessonIndex" type="number" min="1" value="1"></div>
       <div><label>Class duration (min)</label><input id="durationMins" type="number" min="5" value="45"></div>
-      <div><label>Complexity 1–5</label><input id="defaultComplexity" type="number" min="1" max="5" value="2"></div>
+      <div><label>Complexity 1–5 (language)</label><input id="defaultComplexity" type="number" min="1" max="5" value="2"></div>
+      <div><label>Visual 1–5 (density)</label><input id="visualDemand" type="number" min="1" max="5" value="3"></div>
     </div>
     <div class="row"><textarea id="instructions" placeholder="Free-text instructions, e.g. use roti and paper-folding examples, go slow on equal parts"></textarea></div>
     <div class="row"><input type="text" id="requestedBlocks" placeholder="Optional: exact block types, comma-separated (e.g. hook, explain, mcq, exit_ticket)"></div>
@@ -174,7 +175,7 @@ async function streamPost(url, body, onEvent) {
 
 function buildSpec() {
   const spec = { board: $('board').value, grade: $('grade').value, subject: $('subject').value };
-  ['topic','nLessons','lessonIndex','durationMins','defaultComplexity','instructions'].forEach(k => spec[k] = $(k).value);
+  ['topic','nLessons','lessonIndex','durationMins','defaultComplexity','visualDemand','instructions'].forEach(k => spec[k] = $(k).value);
   const rb = $('requestedBlocks').value.split(',').map(s => s.trim()).filter(Boolean);
   if (rb.length) spec.requestedBlocks = rb;
   return spec;
@@ -269,6 +270,7 @@ function addEditBar(el) {
   bar.innerHTML = `
     <input type="text" placeholder="Edit this block…" data-role="prompt">
     <label style="margin:0">simple <input type="range" min="1" max="5" value="${el.querySelector('.badge')?.textContent.replace('C','') || 3}" data-role="slider"> complex</label>
+    <label style="margin:0">text <input type="range" min="1" max="5" value="3" data-role="visual"> visual</label>
     <button class="ghost" data-role="go">Edit</button>
     <button class="ghost" data-role="up" title="Move up">↑</button>
     <button class="ghost" data-role="down" title="Move down">↓</button>
@@ -290,12 +292,13 @@ function addEditBar(el) {
   bar.querySelector('[data-role=go]').onclick = async () => {
     const instruction = bar.querySelector('[data-role=prompt]').value.trim();
     const complexity = Number(bar.querySelector('[data-role=slider]').value);
+    const visualDemand = Number(bar.querySelector('[data-role=visual]').value);
     bar.querySelector('[data-role=msg]').textContent = 'working…';
     say('Editing block ' + id + '…', true);
     try {
       const j = await api('/edit-block', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ lessonId: lesson.id, blockId: id, instruction: instruction || undefined, complexity }),
+        body: JSON.stringify({ lessonId: lesson.id, blockId: id, instruction: instruction || undefined, complexity, visualDemand }),
       });
       const tmp = document.createElement('div');
       tmp.innerHTML = j.blockHtml;

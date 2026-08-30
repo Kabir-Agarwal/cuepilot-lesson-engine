@@ -101,7 +101,7 @@ test('editBlock: the slider alone re-levels a block and is reflected in the prom
   const { block } = await editBlock(lesson.id, target.id, { complexity: 5 });
   assert.equal(block.complexity, 5);
   assert.match(getLastPrompt(), /COMPLEXITY 5\/5/);
-  await assert.rejects(() => editBlock(lesson.id, target.id, {}), /needs instruction/);
+  await assert.rejects(() => editBlock(lesson.id, target.id, {}), /at least one/);
 });
 
 test('editLesson: add-at-end + remove leave every unnamed block byte-identical', async () => {

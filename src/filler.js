@@ -1,6 +1,7 @@
 import { completeJSON } from './llm.js';
 import { validateBlock, makeBlock } from './schema.js';
 import { complexityDirective, clampComplexity } from './complexity.js';
+import { visualDirective } from './visual.js';
 import { prefsDirective } from './prefs.js';
 import { estMinutesFor } from './timebudget.js';
 import { retrieve, sourceRefsFrom } from './rag.js';
@@ -113,6 +114,7 @@ BLOCK INTENT: ${intent}
 ${extraInstruction ? `TEACHER'S EDIT INSTRUCTION FOR THIS BLOCK: ${extraInstruction}` : ''}
 
 ${complexityDirective(c)}
+${visualDirective(spec.visualDemand)}
 ${prefsDirective(prefs)}
 LESSON-WIDE TEACHER INSTRUCTIONS: ${spec.instructions || '(none)'}
 ${siblings}

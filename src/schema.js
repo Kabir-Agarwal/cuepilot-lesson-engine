@@ -102,4 +102,5 @@ export const DEFAULT_PREFS = {
   simpleLanguage: false,
   tone: 'warm',
   defaultComplexity: 3,
+  defaultVisualDemand: 3,  // representation density 1-5, independent of complexity
 };

@@ -1,6 +1,7 @@
 import { completeJSON } from './llm.js';
 import { BLOCK_TYPES, newId, validateLesson } from './schema.js';
 import { clampComplexity } from './complexity.js';
+import { clampVisual, VISUAL_TYPES, PROSE_TYPES } from './visual.js';
 import { fitCheck } from './timebudget.js';
 import { getPrefs } from './prefs.js';
 import { plan } from './planner.js';
@@ -20,6 +21,7 @@ function specFrom(input, materialIds) {
     lessonIndex: Math.max(1, parseInt(input.lessonIndex, 10) || 1),
     durationMins: Math.max(5, Number(input.durationMins) || 40),
     defaultComplexity: clampComplexity(input.defaultComplexity),
+    visualDemand: clampVisual(input.visualDemand),
     instructions: String(input.instructions || ''),
     materialIds,
   };
@@ -66,7 +68,7 @@ export async function generateLesson(input, materialId, teacherId = 'default', m
   // No upload, no lesson. (HARD RULE 9)
   const ids = resolveMaterialIds(materialId, materialIds ?? input?.materialIds, teacherId);
   const prefs = getPrefs(teacherId);
-  const spec = specFrom({ defaultComplexity: prefs.defaultComplexity, ...input }, ids);
+  const spec = specFrom({ defaultComplexity: prefs.defaultComplexity, visualDemand: prefs.defaultVisualDemand, ...input }, ids);
 
   emitStep({ step: 'retrieving', materials: ids.length });
   const seed = await retrieve(`${spec.topic} grade ${spec.grade} ${spec.subject}`, {
@@ -90,7 +92,7 @@ export async function generateLesson(input, materialId, teacherId = 'default', m
     title: outline.title,
     board: spec.board, grade: spec.grade, subject: spec.subject, topic: spec.topic,
     nLessons: spec.nLessons, lessonIndex: spec.lessonIndex,
-    durationMins: spec.durationMins, defaultComplexity: spec.defaultComplexity,
+    durationMins: spec.durationMins, defaultComplexity: spec.defaultComplexity, visualDemand: spec.visualDemand,
     instructions: spec.instructions,
     teacherId, materialId: ids[0], materialIds: ids,
     timeFit: fitCheck(blocks, spec.durationMins),
@@ -111,8 +113,20 @@ export async function generateLesson(input, materialId, teacherId = 'default', m
 
 /* ---------------- Path A: per-block edit ---------------- */
 
-export async function editBlock(lessonId, blockId, { instruction, complexity } = {}) {
-  if (instruction == null && complexity == null) throw Object.assign(new Error('editBlock needs instruction and/or complexity'), { status: 400 });
+// Picks a fitting visual type for a prose block asked to become visual (or the reverse).
+// Returns null when no retype is warranted, so most edits keep the block's type.
+function retypeForVisual(type, visualDemand) {
+  const v = clampVisual(visualDemand);
+  if (type === 'hook' || type === 'exit_ticket') return null;       // never retype the framing blocks
+  if (v >= 4 && PROSE_TYPES.includes(type)) return 'sequence';       // prose -> a representation
+  if (v <= 2 && VISUAL_TYPES.includes(type) && type !== 'activity') return 'explain';  // visual -> prose
+  return null;
+}
+
+export async function editBlock(lessonId, blockId, { instruction, complexity, visualDemand } = {}) {
+  if (instruction == null && complexity == null && visualDemand == null) {
+    throw Object.assign(new Error('editBlock needs at least one of instruction, complexity, visualDemand'), { status: 400 });
+  }
   const lesson = load('lessons', lessonId);
   if (!lesson) throw Object.assign(new Error(`lesson ${lessonId} not found`), { status: 404 });
   const idx = lesson.blocks.findIndex(b => b.id === blockId);
@@ -121,12 +135,18 @@ export async function editBlock(lessonId, blockId, { instruction, complexity } =
   const ids = lesson.materialIds?.length ? lesson.materialIds : (lesson.materialId ? [lesson.materialId] : []);
   ensureMaterials(ids);
   const prefs = getPrefs(lesson.teacherId || 'default');
-  const spec = specFrom(lesson, ids);
+  // This block's visualDemand overrides the lesson default for this regen only.
+  const spec = specFrom({ ...lesson, visualDemand: visualDemand == null ? lesson.visualDemand : visualDemand }, ids);
   const old = lesson.blocks[idx];
 
-  const intent = `${old.narration || summarise(old)}${instruction ? ` — revised so that: ${instruction}` : ''}`;
+  // High visual demand may turn a prose block into a representation (and vice versa) via retype.
+  const newType = visualDemand == null ? old.type : (retypeForVisual(old.type, visualDemand) || old.type);
+  const intent = newType !== old.type
+    ? `Cover the same idea as the previous ${old.type} (${summarise(old)}) but as a ${newType} representation${instruction ? `, and: ${instruction}` : ''}`
+    : `${old.narration || summarise(old)}${instruction ? ` — revised so that: ${instruction}` : ''}`;
+
   const fresh = await fillBlock({
-    type: old.type, intent, spec, prefs,
+    type: newType, intent, spec, prefs,
     complexity: complexity == null ? old.complexity : complexity,
     extraInstruction: instruction || '',
     siblingSummaries: lesson.blocks.filter(b => b.id !== blockId).map(summarise),

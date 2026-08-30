@@ -1,10 +1,21 @@
 import { completeJSON } from './llm.js';
 import { BLOCK_TYPES } from './schema.js';
 import { complexityDirective } from './complexity.js';
+import { visualDirective, clampVisual } from './visual.js';
 import { fitPlan, estMinutesFor } from './timebudget.js';
 import { prefsDirective } from './prefs.js';
 
 const DEFAULT_SHAPE = ['hook', 'explain', 'number_line', 'bar_compare', 'sequence', 'mcq', 'activity', 'exit_ticket', 'teacher_notes'];
+
+// Block spines that vary representation density by visualDemand. Always open with hook and
+// close with exit_ticket + teacher_notes; the middle shifts prose <-> visual by the flag.
+const SHAPE_BY_VISUAL = {
+  1: ['hook', 'explain', 'explain', 'number_line', 'mcq', 'exit_ticket', 'teacher_notes'],
+  2: ['hook', 'explain', 'number_line', 'explain', 'mcq', 'exit_ticket', 'teacher_notes'],
+  3: DEFAULT_SHAPE,
+  4: ['hook', 'number_line', 'bar_compare', 'explain', 'sequence', 'mcq', 'activity', 'exit_ticket', 'teacher_notes'],
+  5: ['hook', 'number_line', 'bar_compare', 'sequence', 'mcq', 'activity', 'mcq', 'exit_ticket', 'teacher_notes'],
+};
 
 const intentFor = (type, spec) => ({
   hook: `A real-life opening question about ${spec.topic} for grade ${spec.grade}`,
@@ -19,9 +30,10 @@ const intentFor = (type, spec) => ({
 }[type] || `A ${type} block about ${spec.topic}`);
 
 function mockPlan(spec) {
+  const shape = SHAPE_BY_VISUAL[clampVisual(spec.visualDemand)] || DEFAULT_SHAPE;
   return {
     title: `${spec.topic}: Lesson ${spec.lessonIndex} of ${spec.nLessons}`,
-    blocks: DEFAULT_SHAPE.map(type => ({ type, intent: intentFor(type, spec) })),
+    blocks: shape.map(type => ({ type, intent: intentFor(type, spec) })),
   };
 }
 
@@ -54,6 +66,7 @@ Board: ${spec.board}. Grade: ${spec.grade}. Subject: ${spec.subject}. Class leng
 This lesson must cover only the slice of "${spec.topic}" that belongs at position ${spec.lessonIndex} of ${spec.nLessons}.
 
 ${complexityDirective(spec.defaultComplexity)}
+${visualDirective(spec.visualDemand)}
 ${prefsDirective(prefs)}
 TEACHER INSTRUCTIONS: ${spec.instructions || '(none)'}
 

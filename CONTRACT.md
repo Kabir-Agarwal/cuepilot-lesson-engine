@@ -61,8 +61,26 @@ Omit `teacherId` for all materials.
 
 - **`materialIds[]`** (multi-resource): pass several material ids instead of one. They must share the same `teacherId` and `subject`, else `400 MATERIAL_MISMATCH`. Retrieval merges across them but stays strictly scoped to that set. A single `materialId` behaves exactly as before.
 - **`spec.requestedBlocks[]`** (optional): pin the exact block types, in order. Unknown type → `400 BAD_BLOCK_TYPE`. When present, the generated set equals the requested set (no time-dropping).
+- **`spec.visualDemand`** 1–5 (optional, default 3): representation **density**, independent of `defaultComplexity` (which is language depth). 1 = text-first (prose dominates); 3 = balanced; 5 = visual-first (every concept gets a representation/interactive, explains compressed to captions). It shifts the planner's block-type mix and is injected into every generation prompt. Stored on the lesson. Teacher default: `prefs.defaultVisualDemand`.
 - **`stream: true`** → the response is an **SSE** stream (`content-type: text/event-stream`). Events (one JSON per `data:` line):
   `{"step":"retrieving"}` → `{"step":"planning"}` → `{"step":"provider","model":"gemini-flash-latest"}` → `{"step":"block","i":k,"n":total,"type":"..."}` (per block) → `{"step":"verifying","cycle":1}` (only if the verifier is on) → `{"step":"rendering"}` → `{"done":true,"lessonId":"...","lesson":{...},"html":"...","timeFit":{...}}`. On failure: `{"error":"...","code":"..."}`. The `provider` event names which model (or `mock`) actually answered.
+
+  **Consuming the SSE (POST → EventSource won't work; read the fetch body stream):**
+  ```js
+  const res = await fetch('/generate', { method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({ materialId, teacherId, spec, stream:true }) });
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream:true });
+    let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+      const line = buf.slice(0, i).split('\n').find(l => l.startsWith('data:')); buf = buf.slice(i + 2);
+      if (line) { const ev = JSON.parse(line.slice(5).trim());
+        if (ev.step === 'block') updateBar(ev.i, ev.n);          // "block k/n — X%"
+        else if (ev.done) render(ev.html); }
+    }
+  }
+  ```
 
 ### `POST /lessons/:id/reorder`
 ```json
@@ -72,10 +90,12 @@ Must be a **permutation** of the lesson's existing block ids (`400 BAD_PERMUTATI
 
 ### `POST /edit-block`  — Path A (per block)
 ```json
-{ "lessonId":"lsn_..","blockId":"b_..","instruction":"use a cricket example","complexity":2 }
+{ "lessonId":"lsn_..","blockId":"b_..","instruction":"use a cricket example","complexity":2,"visualDemand":5 }
 ```
-At least one of `instruction` / `complexity` (the 1–5 slider). **Only that block regenerates**; siblings
-stay byte-identical. → `{ block, blockHtml, timeFit }`. Swap just that block's DOM node with `blockHtml`.
+At least one of `instruction` / `complexity` (1–5 language slider) / `visualDemand` (1–5 density slider).
+**Only that block regenerates**; siblings stay byte-identical. A high `visualDemand` on a prose block may
+**retype** it to a representation (and a low one on a visual block toward `explain`) via the existing retype
+path — still only that block changes. → `{ block, blockHtml, timeFit }`. Swap just that block's DOM node with `blockHtml`.
 
 ### `POST /edit-lesson`  — Path B (conversational)
 ```json

@@ -102,8 +102,8 @@ app.post('/generate', wrap(async (req, res) => {
 }));
 
 app.post('/edit-block', wrap(async (req, res) => {
-  const { lessonId, blockId, instruction, complexity } = req.body || {};
-  const { block, timeFit } = await editBlock(lessonId, blockId, { instruction, complexity });
+  const { lessonId, blockId, instruction, complexity, visualDemand } = req.body || {};
+  const { block, timeFit } = await editBlock(lessonId, blockId, { instruction, complexity, visualDemand });
   res.json({ block, blockHtml: renderBlock(block), timeFit });
 }));
 
