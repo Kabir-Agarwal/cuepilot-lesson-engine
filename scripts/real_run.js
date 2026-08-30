@@ -63,5 +63,11 @@ const verified = await generateLesson(
 report.verifiedGenerate = delta(s, snap());
 console.log('verified generate:', report.verifiedGenerate, '| verified:', verified.verified, '| blocks:', verified.blocks.length);
 
+if (stats.live === 0) {
+  console.log(`\nSKIP — every call fell back to mock (Gemini live=${stats.live}, mock=${stats.mock}); the key is likely rate-limited or over daily quota.`);
+  console.log('Retry later with `npm run realrun`. No real latency/tokens to report; fixtures/real-run.json not overwritten with mock content.');
+  process.exit(0);
+}
+report.liveCalls = stats.live; report.mockFallbacks = stats.mock;
 fs.writeFileSync('fixtures/real-run.json', JSON.stringify({ ranAt: new Date().toISOString(), report, lesson: el.lesson, verifiedLesson: verified }, null, 2));
-console.log('saved fixtures/real-run.json  (token counts are approximate: chars/4)');
+console.log(`saved fixtures/real-run.json  (live calls: ${stats.live}, mock fallbacks: ${stats.mock}; token counts approximate: chars/4)`);

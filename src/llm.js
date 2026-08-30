@@ -46,7 +46,7 @@ let lastPrompt = null;
 let lastRaw = null;
 let queue = Promise.resolve();   // serialises every provider call
 let lastCallAt = 0;
-export const stats = { calls: 0, promptChars: 0, completionChars: 0, ms: 0 };
+export const stats = { calls: 0, promptChars: 0, completionChars: 0, ms: 0, live: 0, mock: 0 };
 
 export const getLastPrompt = () => lastPrompt;
 export const getLastRaw = () => lastRaw;
@@ -128,11 +128,16 @@ async function callAnthropic(system, prompt) {
   return j.content?.map(c => c.text || '').join('') ?? '';
 }
 
+// A daily-quota 429 ("exceeded your current quota") is not transient and every model shares
+// the quota — retrying or walking the chain just hammers an exhausted key. Bail straight to mock.
+const isQuotaExhausted = e => e.status === 429 && /exceeded your current quota|quota/i.test(e.message || '');
+
 async function callModelWithBackoff(model, system, prompt) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await callGemini(system, prompt, model);
     } catch (e) {
+      if (isQuotaExhausted(e)) throw e;   // don't retry a hard quota limit
       const retryable = e.status === 429 || (e.status >= 500 && e.status < 600) || e.name === 'TypeError';
       if (!retryable || attempt >= MAX_RETRIES - 1) throw e;
       const wait = 1000 * 2 ** attempt;
@@ -156,6 +161,10 @@ async function callGeminiChain(system, prompt) {
       return out;
     } catch (e) {
       lastErr = e;
+      if (isQuotaExhausted(e)) {   // shared quota — the rest of the chain is pointless
+        console.warn('[llm] Gemini quota exhausted — skipping remaining models, serving mock.');
+        break;
+      }
       console.warn(`[llm] model ${model} failed (${e.status || e.message}) — trying next in chain`);
     }
   }
@@ -192,6 +201,7 @@ export function completeJSON({ system = 'You are a helpful curriculum assistant.
 
     if (provider() === 'mock') {
       emitStep({ step: 'provider', provider: 'mock', model: 'mock' });
+      stats.mock++;
       lastRaw = JSON.stringify(mock ?? null);
       stats.completionChars += lastRaw.length;
       return structuredClone(mock ?? null);
@@ -209,6 +219,7 @@ export function completeJSON({ system = 'You are a helpful curriculum assistant.
         const out = extractJSON(raw);
         stats.completionChars += raw.length;
         stats.ms += Date.now() - t0;
+        stats.live++;
         return out;
       } catch {
         // one repair-retry
@@ -218,6 +229,7 @@ export function completeJSON({ system = 'You are a helpful curriculum assistant.
         lastRaw = raw;
         stats.completionChars += raw.length;
         stats.ms += Date.now() - t0;
+        stats.live++;
         return extractJSON(raw);
       }
     } catch (e) {
@@ -225,6 +237,7 @@ export function completeJSON({ system = 'You are a helpful curriculum assistant.
       // demo never dies mid-generation; the provider event shows it was the fallback.
       console.warn(`[llm] all providers failed (${e.status || e.message}) — serving mock for this call`);
       emitStep({ step: 'provider', provider: 'mock', model: 'mock', reason: String(e.status || e.message) });
+      stats.mock++;
       lastRaw = JSON.stringify(mock ?? null);
       stats.completionChars += lastRaw.length;
       return structuredClone(mock ?? null);
