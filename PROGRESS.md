@@ -6,3 +6,4 @@
 - 2026-08-30 — checkkeys + realrun live (Gemini subject to 503 high-demand; degrades to mock) — 100% target
 - 2026-08-30 — v8.4: visual-demand slider (1-5 representation density), independent of complexity; per-block retype; 38 tests — 100%
 - 2026-08-30 — v8.5: frontend handoff pack (INTEGRATION.md, curl.md, reference-client.html, examples/) + app-wide CORS + /lessons/:id?mode=document|slideshow|animated; 40 tests — 100%
+- 2026-08-30 — v8.6: Render deploy prep (0.0.0.0:$PORT, render.yaml, /health modelChainLength, ephemeral-disk note, boot-safe empty data); 40 tests — 100%
