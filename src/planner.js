@@ -44,7 +44,14 @@ Allowed block types: ${BLOCK_TYPES.join(', ')}.
 Return JSON: {"title": string, "blocks": [{"type": <allowed type>, "intent": "one line saying what this block must do, referencing the material"}]}
 Rules: start with a hook, end with exit_ticket then teacher_notes. 7-10 blocks. Do not repeat a type more than twice.`;
 
-  const raw = await completeJSON({ system, prompt, mock: mockPlan(spec) });
+  // A transient LLM failure (429/503) must not sink the whole lesson — degrade to the mock spine.
+  let raw;
+  try {
+    raw = await completeJSON({ system, prompt, mock: mockPlan(spec) });
+  } catch (e) {
+    console.warn(`[planner] plan generation failed (${e.message}) — using mock spine`);
+    raw = mockPlan(spec);
+  }
   const blocks = (raw?.blocks || [])
     .filter(b => BLOCK_TYPES.includes(b?.type))
     .map(b => ({ type: b.type, intent: String(b.intent || `A ${b.type} block about ${spec.topic}`) }));

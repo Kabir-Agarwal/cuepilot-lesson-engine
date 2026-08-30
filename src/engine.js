@@ -193,7 +193,13 @@ Block types: ${BLOCK_TYPES.join(', ')}.
 Rules: change as little as possible. Only touch blocks the teacher actually asked about.
 Use "global" ONLY when the request is about the whole lesson (grade level, tone, language).`;
 
-  const rawOps = await completeJSON({ system, prompt, mock: mockOps(String(instruction), lesson) });
+  let rawOps;
+  try {
+    rawOps = await completeJSON({ system, prompt, mock: mockOps(String(instruction), lesson) });
+  } catch (e) {
+    console.warn(`[editLesson] op planning failed (${e.message}) — using heuristic ops`);
+    rawOps = mockOps(String(instruction), lesson);
+  }
   const ops = validateOps(rawOps, lesson);
   if (!ops.length) {
     return { lesson, changedBlockIds: [], timeFit: lesson.timeFit, ops: [], note: 'No applicable operation was derived from that instruction. Nothing was changed.' };
@@ -283,7 +289,9 @@ export async function roadmap(input, materialId, teacherId = 'default') {
 TEACHER MATERIAL:
 ${context || '(none)'}
 Return JSON {"lessons":[{"lessonIndex":number,"title":string,"focus":"one line of what this lesson covers"}]} with exactly ${spec.nLessons} entries in order.`;
-  const raw = await completeJSON({ system, prompt, mock });
+  let raw;
+  try { raw = await completeJSON({ system, prompt, mock }); }
+  catch (e) { console.warn(`[roadmap] failed (${e.message}) — using mock plan`); raw = mock; }
   const lessons = (raw?.lessons || mock.lessons)
     .slice(0, spec.nLessons)
     .map((l, k) => ({ lessonIndex: k + 1, title: String(l.title || `${spec.topic} — part ${k + 1}`), focus: String(l.focus || '') }));

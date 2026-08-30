@@ -28,9 +28,16 @@ save('materials', materialId, { id: materialId, materialId, teacherId: 'demo-tea
 
 const report = {};
 let s = snap();
-const lesson = await generateLesson(
+let lesson;
+try {
+  lesson = await generateLesson(
   { board: 'CBSE', grade: '4', subject: 'Mathematics', topic: 'Fractions', nLessons: 3, lessonIndex: 1, durationMins: 40, defaultComplexity: 3, instructions: '' },
   materialId, 'demo-teacher');
+} catch (e) {
+  console.log(`SKIP — live run could not complete: ${e.message}`);
+  console.log('Likely a transient 429/503 (model overloaded). Retry later with `npm run realrun`. The server itself degrades to mock, so the demo is unaffected.');
+  process.exit(0);
+}
 report.generate = delta(s, snap());
 console.log('generate:', report.generate, '| blocks:', lesson.blocks.length, '| timeFit:', lesson.timeFit);
 
