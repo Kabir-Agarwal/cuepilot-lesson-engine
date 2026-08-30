@@ -10,8 +10,8 @@ export const VISUAL_LEVELS = {
 };
 
 // Representation/interactive block types (the "visual" ones) vs prose types.
-export const VISUAL_TYPES = ['number_line', 'bar_compare', 'sequence', 'mcq', 'activity'];
-export const PROSE_TYPES = ['explain', 'teacher_notes'];
+export const VISUAL_TYPES = ['number_line', 'bar_compare', 'sequence', 'mcq', 'activity', 'flowchart', 'match_game'];
+export const PROSE_TYPES = ['explain', 'teacher_notes', 'pro_tip'];
 
 export const clampVisual = v => Math.min(5, Math.max(1, Math.round(Number(v) || 3)));
 

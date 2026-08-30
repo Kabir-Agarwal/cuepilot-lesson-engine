@@ -4,7 +4,13 @@ import { randomUUID } from 'node:crypto';
 export const BLOCK_TYPES = [
   'hook', 'explain', 'number_line', 'bar_compare', 'sequence',
   'mcq', 'activity', 'exit_ticket', 'teacher_notes',
+  // Richer, UI-forward types (v9): a process/decision diagram, a tips callout,
+  // and a small click-to-match game. See render/index.js for their renderers.
+  'flowchart', 'pro_tip', 'match_game',
 ];
+
+/** Node roles a flowchart may use. */
+export const FLOW_NODE_TYPES = ['start', 'process', 'decision', 'end'];
 
 const str = v => typeof v === 'string' && v.trim().length > 0;
 const num = v => typeof v === 'number' && Number.isFinite(v);
@@ -47,6 +53,23 @@ const DATA_RULES = {
   ],
   exit_ticket: d => [!arr(d.questions, str) && 'exit_ticket.questions must be a non-empty string[]'],
   teacher_notes: d => [!arr(d.points, str) && 'teacher_notes.points must be a non-empty string[]'],
+  flowchart: d => [
+    !arr(d.nodes, n => n && FLOW_NODE_TYPES.includes(n.type) && str(n.text))
+      && `flowchart.nodes must be [{type:${FLOW_NODE_TYPES.join('|')}, text}]`,
+    Array.isArray(d.nodes) && !d.nodes.some(n => n.type === 'start') && 'flowchart.nodes needs a start node',
+    Array.isArray(d.nodes) && !d.nodes.some(n => n.type === 'end') && 'flowchart.nodes needs an end node',
+    d.title != null && !str(d.title) && 'flowchart.title, if present, must be a non-empty string',
+  ],
+  pro_tip: d => [
+    !arr(d.tips, str) && 'pro_tip.tips must be a non-empty string[]',
+    d.label != null && !str(d.label) && 'pro_tip.label, if present, must be a non-empty string',
+  ],
+  match_game: d => [
+    !str(d.prompt) && 'match_game.prompt must be a non-empty string',
+    !(Array.isArray(d.pairs) && d.pairs.length >= 2 && d.pairs.length <= 6
+      && d.pairs.every(p => p && str(p.left) && str(p.right)))
+      && 'match_game.pairs must be 2-6 items of {left,right}',
+  ],
 };
 
 export function validateBlock(block) {

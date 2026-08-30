@@ -51,7 +51,8 @@ the chunks actually used. `editBlock` regenerates one block; `editLesson` sees o
 returns surgical ops (`add`/`remove`/`edit`/`retype`/`global`). The LLM only ever writes lesson
 JSON — deterministic, XSS-safe renderers turn it into HTML.
 
-- **Blocks:** hook, explain, number_line, bar_compare, sequence, mcq, activity, exit_ticket, teacher_notes
+- **Blocks:** hook, explain, number_line, bar_compare, sequence, mcq, activity, exit_ticket, teacher_notes,
+  flowchart (process/decision diagram), pro_tip (tips & tricks callout), match_game (click-to-match game)
 - **RAG:** Alchemyst (grouped per material) when a key is present; local keyword fallback otherwise, always material-scoped
 - **Renderers:** document mode (`/lessons/:id?format=html`), slideshow (`?format=slides`), plus `/lesson.css` + `/lesson.js` for embedding
 

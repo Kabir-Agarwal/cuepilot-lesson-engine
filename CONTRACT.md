@@ -140,6 +140,13 @@ events (each op as `{"step":"op",...}`) ending in the `done` event above.
 | `activity` | `{title,instructions[],materials[]}` |
 | `exit_ticket` | `{questions[]}` |
 | `teacher_notes` | `{points[]}` |
+| `flowchart` | `{title?, nodes:[{type:"start"\|"process"\|"decision"\|"end", text, yes?, no?}]}` (renders a process/decision diagram; always has a start + end) |
+| `pro_tip` | `{label?, tips[]}` (tips-and-tricks callout dropped between teaching) |
+| `match_game` | `{prompt, pairs:[{left,right}]}` (2–6 pairs; a click-to-match game) |
+
+`mcq` is generated **correct-by-construction**: the model emits `{correctAnswer, distractors[]}`, the
+engine assembles the 4 `options` and computes `answerIndex` itself, and (live only) an independent
+verifier re-checks the answer against the material — so the marked answer can't silently be wrong.
 
 **timeFit** — `ok:false` carries `overBy` (minutes) and a `suggestion` (e.g. move a block to homework).
 Nothing is ever auto-trimmed; both edit paths recompute it.
