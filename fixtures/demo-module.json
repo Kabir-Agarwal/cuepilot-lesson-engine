@@ -1,0 +1,161 @@
+{
+  "id": "lsn_demo_pizza",
+  "title": "Fractions: The Great Pizza Share",
+  "board": "Common Core",
+  "grade": "4",
+  "subject": "Mathematics",
+  "topic": "Introduction to Fractions",
+  "nLessons": 1,
+  "lessonIndex": 1,
+  "durationMins": 40,
+  "defaultComplexity": 3,
+  "visualDemand": 4,
+  "instructions": "A hand-authored demo lesson, used as the offline backup module.",
+  "timeFit": { "plannedMins": 38, "ok": true },
+  "materialId": null,
+  "materialIds": [],
+  "blocks": [
+    {
+      "id": "b_demo_hook",
+      "type": "hook",
+      "complexity": 2,
+      "estMinutes": 4,
+      "sourceRefs": [],
+      "narration": "Open with a fair-share problem everyone has lived through.",
+      "data": {
+        "text": "Four friends. One big pizza. Nobody wants the smallest slice. How do we make the shares exactly fair?"
+      }
+    },
+    {
+      "id": "b_demo_explain",
+      "type": "explain",
+      "complexity": 3,
+      "estMinutes": 5,
+      "sourceRefs": [],
+      "narration": "Name the two numbers and the job each one does.",
+      "data": {
+        "heading": "Meet the Numerator and Denominator",
+        "paragraphs": [
+          "When we split a whole into equal parts, each part is a fraction of the whole.",
+          "The bottom number, the denominator, says how many equal pieces the whole was cut into. Cut the pizza into 4 equal slices and the denominator is 4.",
+          "The top number, the numerator, says how many of those pieces we took. Grab 3 of the 4 slices and you have 3/4 of the pizza."
+        ]
+      }
+    },
+    {
+      "id": "b_demo_numberline",
+      "type": "number_line",
+      "complexity": 3,
+      "estMinutes": 5,
+      "sourceRefs": [],
+      "narration": "Place the quarters between 0 (no pizza) and 1 (whole pizza).",
+      "data": {
+        "min": 0,
+        "max": 1,
+        "step": 0.25,
+        "marks": [
+          { "value": 0, "label": "0" },
+          { "value": 0.25, "label": "1/4" },
+          { "value": 0.5, "label": "1/2" },
+          { "value": 0.75, "label": "3/4" },
+          { "value": 1, "label": "1" }
+        ],
+        "question": "Tap each mark. Where does three quarters of the pizza land?"
+      }
+    },
+    {
+      "id": "b_demo_bars",
+      "type": "bar_compare",
+      "complexity": 3,
+      "estMinutes": 4,
+      "sourceRefs": [],
+      "narration": "Show that different names can be the same amount.",
+      "data": {
+        "items": [
+          { "label": "One half", "numerator": 1, "denominator": 2 },
+          { "label": "Two quarters", "numerator": 2, "denominator": 4 },
+          { "label": "Three sixths", "numerator": 3, "denominator": 6 }
+        ],
+        "caption": "All three bars fill the same length. These are equivalent fractions."
+      }
+    },
+    {
+      "id": "b_demo_sequence",
+      "type": "sequence",
+      "complexity": 2,
+      "estMinutes": 5,
+      "sourceRefs": [],
+      "narration": "A repeatable recipe for a fair share.",
+      "data": {
+        "steps": [
+          { "title": "Count the sharers", "text": "How many people need a share? That count is your denominator." },
+          { "title": "Cut equal pieces", "text": "Split the whole into that many equal pieces. Equal is the whole point." },
+          { "title": "Hand them out", "text": "Give one piece to each sharer. Each person now holds one unit fraction." },
+          { "title": "Name the share", "text": "Write it: pieces you have on top, total pieces on the bottom." }
+        ]
+      }
+    },
+    {
+      "id": "b_demo_mcq",
+      "type": "mcq",
+      "complexity": 3,
+      "estMinutes": 4,
+      "sourceRefs": [],
+      "narration": "Check understanding with a fair, correct-by-construction question.",
+      "data": {
+        "question": "You cut a pizza into 8 equal slices and eat 2. How much of the pizza is left?",
+        "options": ["2/8", "6/8", "8/6", "2/6"],
+        "answerIndex": 1,
+        "explanation": "8 slices total, 2 eaten, so 6 remain. That is 6 out of 8, or 6/8 (the same as 3/4)."
+      }
+    },
+    {
+      "id": "b_demo_activity",
+      "type": "activity",
+      "complexity": 2,
+      "estMinutes": 6,
+      "sourceRefs": [],
+      "narration": "Hands-on proof that equal shares can look different.",
+      "data": {
+        "title": "Paper pizza share",
+        "materials": ["two paper circles", "crayons", "scissors"],
+        "instructions": [
+          "Work in pairs. Each pair takes two paper circles of the same size.",
+          "Fold one circle into 2 equal parts and the other into 4 equal parts.",
+          "Shade 1 part of the first circle and 2 parts of the second circle.",
+          "Place them side by side. Are the shaded amounts the same?",
+          "Write what you found in one sentence."
+        ]
+      }
+    },
+    {
+      "id": "b_demo_exit",
+      "type": "exit_ticket",
+      "complexity": 2,
+      "estMinutes": 3,
+      "sourceRefs": [],
+      "narration": "Quick check before they leave.",
+      "data": {
+        "questions": [
+          "Draw a pizza cut into 4 equal parts and shade 3 of them. Write the fraction.",
+          "Give one fraction that means the same amount as 1/2."
+        ]
+      }
+    },
+    {
+      "id": "b_demo_notes",
+      "type": "teacher_notes",
+      "complexity": 3,
+      "estMinutes": 2,
+      "sourceRefs": [],
+      "narration": "Watch-fors for the teacher.",
+      "data": {
+        "points": [
+          "Many children think 1/6 is bigger than 1/3 because 6 is bigger. Use the paper circles, not words.",
+          "Insist on the word 'equal' every time a part is named.",
+          "If time runs short, move the paper pizza share to homework."
+        ]
+      }
+    }
+  ]
+}

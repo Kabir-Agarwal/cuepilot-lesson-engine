@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { pathToFileURL } from 'node:url';
+import { readFileSync } from 'node:fs';
 import express from 'express';
 import multer from 'multer';
 import { extractText } from './src/pdf.js';
@@ -197,6 +198,11 @@ app.get('/v1/lessons', (_req, res) => res.json({
   lessons: list('lessons')
     .map(l => ({ id: l.id, title: l.title, grade: l.grade, subject: l.subject, topic: l.topic, blocks: l.blocks.length, durationMins: l.durationMins }))
 }));
+
+// Hand-authored backup module: a complete, always-valid lesson the UI can render
+// when generation is unavailable (engine down / LLM busy). Same {module} shape as /v1/runs.
+const DEMO_LESSON = JSON.parse(readFileSync(new URL('./fixtures/demo-module.json', import.meta.url), 'utf8'));
+app.get('/v1/demo', (_req, res) => res.json({ module: toUiModule(DEMO_LESSON), lessonId: DEMO_LESSON.id }));
 
 app.post('/v1/lessons/:id/reorder', wrap(async (req, res) => {
   const lesson = reorderBlocks(req.params.id, req.body?.blockIds);

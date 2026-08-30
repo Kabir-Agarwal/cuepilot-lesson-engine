@@ -73,3 +73,18 @@ test('POST /ingest with full metadata -> materialId, then it appears in /materia
   const { materials } = await res.json();
   assert.ok(materials.some(m => m.id === up.json.materialId && m.filename === 'frac.txt'));
 });
+
+test('GET /v1/demo -> 200 rich backup module with a working MCQ figure', async () => {
+  const res = await fetch(base + '/v1/demo');
+  assert.equal(res.status, 200);
+  const { module, lessonId } = await res.json();
+  assert.ok(lessonId, 'carries a lessonId');
+  assert.ok(module.blocks.length >= 8, 'is a full lesson');
+  const mcq = module.blocks.find(b => b.figure?.kind === 'mcq');
+  assert.ok(mcq, 'has an MCQ figure');
+  assert.ok(Array.isArray(mcq.figure.options) && mcq.figure.options.length >= 2, 'MCQ has options');
+  assert.ok(
+    mcq.figure.answerIndex >= 0 && mcq.figure.answerIndex < mcq.figure.options.length,
+    'MCQ answerIndex points at a real option',
+  );
+});
