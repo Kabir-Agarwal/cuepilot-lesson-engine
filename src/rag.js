@@ -172,6 +172,8 @@ function localSearch(intent, materialIds) {
  */
 export async function retrieve(intent, filters = {}) {
   const { materialIds, board, grade, subject, k = 3 } = filters;
+  // No material scope -> no retrieval (never fall through to all-materials, which would leak).
+  if (!materialIds?.length) return [];
   let hits = await alchemystSearch(intent, materialIds);
   // Alchemyst groups may not be perfectly isolated — enforce scoping ourselves, always.
   if (hits && materialIds?.length) hits = hits.filter(c => materialIds.includes(c.source_id));

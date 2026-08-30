@@ -17,10 +17,12 @@ async function post(path, body, isForm) {
   return { status: res.status, json: await res.json().catch(() => ({})) };
 }
 
-test('POST /generate without materialId -> 400 MATERIAL_REQUIRED', async () => {
+test('POST /generate without materialId -> 200 ungrounded lesson (no upload required)', async () => {
   const r = await post('/generate', { spec: { topic: 'Fractions' }, teacherId: 'default' });
-  assert.equal(r.status, 400);
-  assert.equal(r.json.code, 'MATERIAL_REQUIRED');
+  assert.equal(r.status, 200);
+  assert.ok(r.json.lesson.blocks.length > 0);
+  assert.equal(r.json.lesson.materialId, null);
+  assert.ok(r.json.lesson.blocks.every(b => b.sourceRefs.length === 0), 'no citations without material');
 });
 
 test('CORS: preflight OPTIONS returns 204 with allow-origin/methods/headers', async () => {

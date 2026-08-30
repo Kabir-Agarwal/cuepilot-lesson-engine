@@ -49,7 +49,8 @@ const ensureMaterial = id => ensureMaterials([id])[0] || null;
 // teacherId + subject, else 400. Returns the validated id list.
 function resolveMaterialIds(materialId, materialIds, teacherId) {
   const ids = Array.isArray(materialIds) && materialIds.length ? materialIds : (materialId ? [materialId] : []);
-  if (!ids.length) throw Object.assign(new Error('a materialId (or materialIds[]) is required — upload teacher material first'), { status: 400, code: 'MATERIAL_REQUIRED' });
+  if (!ids.length) return [];  // upload optional: no material -> ungrounded generation
+
   const mats = ids.map(id => ({ id, m: load('materials', id) }));
   const missing = mats.filter(x => !x.m).map(x => x.id);
   if (missing.length) throw Object.assign(new Error(`material(s) not found: ${missing.join(', ')}`), { status: 400, code: 'MATERIAL_REQUIRED' });
@@ -65,7 +66,6 @@ function resolveMaterialIds(materialId, materialIds, teacherId) {
 }
 
 export async function generateLesson(input, materialId, teacherId = 'default', materialIds) {
-  // No upload, no lesson. (HARD RULE 9)
   const ids = resolveMaterialIds(materialId, materialIds ?? input?.materialIds, teacherId);
   const prefs = getPrefs(teacherId);
   const spec = specFrom({ defaultComplexity: prefs.defaultComplexity, visualDemand: prefs.defaultVisualDemand, ...input }, ids);
@@ -94,7 +94,7 @@ export async function generateLesson(input, materialId, teacherId = 'default', m
     nLessons: spec.nLessons, lessonIndex: spec.lessonIndex,
     durationMins: spec.durationMins, defaultComplexity: spec.defaultComplexity, visualDemand: spec.visualDemand,
     instructions: spec.instructions,
-    teacherId, materialId: ids[0], materialIds: ids,
+    teacherId, materialId: ids[0] ?? null, materialIds: ids,
     timeFit: fitCheck(blocks, spec.durationMins),
     blocks,
   };
