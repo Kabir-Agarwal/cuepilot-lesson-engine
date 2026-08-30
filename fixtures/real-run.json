@@ -1,0 +1,412 @@
+{
+  "ranAt": "2026-08-30T10:09:48.321Z",
+  "report": {
+    "generate": {
+      "calls": 7,
+      "ms": 139505,
+      "approxPromptTokens": 8307,
+      "approxCompletionTokens": 1358
+    },
+    "editBlock": {
+      "calls": 1,
+      "ms": 14987,
+      "approxPromptTokens": 1268,
+      "approxCompletionTokens": 105
+    },
+    "editLesson": {
+      "calls": 2,
+      "ms": 94756,
+      "approxPromptTokens": 1624,
+      "approxCompletionTokens": 145
+    },
+    "verifiedGenerate": {
+      "calls": 9,
+      "ms": 295120,
+      "approxPromptTokens": 9951,
+      "approxCompletionTokens": 1531
+    },
+    "liveCalls": 19,
+    "mockFallbacks": 0
+  },
+  "lesson": {
+    "id": "lsn_47ca7151",
+    "title": "Lesson 1: Introduction to Fractions and Equal Parts",
+    "board": "CBSE",
+    "grade": "4",
+    "subject": "Mathematics",
+    "topic": "Fractions",
+    "nLessons": 3,
+    "lessonIndex": 1,
+    "durationMins": 40,
+    "defaultComplexity": 3,
+    "visualDemand": 3,
+    "instructions": "",
+    "teacherId": "demo-teacher",
+    "materialId": "mat_003d5aec",
+    "materialIds": [
+      "mat_003d5aec"
+    ],
+    "timeFit": {
+      "plannedMins": 48,
+      "ok": false,
+      "overBy": 8,
+      "suggestion": "This lesson runs about 8 min over 40 min. Nothing was removed. Suggestion: move the activity to homework or shorten it to a 5-minute pair task."
+    },
+    "blocks": [
+      {
+        "id": "b_648a2f80",
+        "type": "hook",
+        "data": {
+          "text": "Welcome to our new chapter on fractions! Imagine Meena sitting down for a meal and cutting one round roti into 4 equal parts. When she eats one of those parts, she has eaten a specific fraction of the whole roti called one-fourth. Fractions are all around us in our daily life, helping us describe parts of a whole thing."
+        },
+        "complexity": 3,
+        "estMinutes": 3.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Welcome, class! Have you ever shared a roti, a chapati, or a pizza with your friends by cutting it into equal pieces? Let us find out how we name those pieces using fractions."
+      },
+      {
+        "id": "b_5126370b",
+        "type": "explain",
+        "data": {
+          "heading": "Parts of a Roti",
+          "paragraphs": [
+            "Think of a warm roti cut into equal pieces. The bottom number tells us the total number of equal parts.",
+            "The top number tells us how many parts we are taking to eat or share."
+          ]
+        },
+        "complexity": 1,
+        "estMinutes": 9.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Think of a roti cut into equal pieces. The bottom number tells us the total number of equal parts, and the top number tells us how many parts we are taking."
+      },
+      {
+        "id": "b_d5e06123",
+        "type": "activity",
+        "data": {
+          "title": "Paper Folding Activity: Making Fourths",
+          "materials": [
+            "Square sheet of paper"
+          ],
+          "instructions": [
+            "Take your square sheet of paper and fold it neatly in half from top to bottom.",
+            "Fold it in half again from left to right so that you form a smaller square.",
+            "Unfold the paper completely and look at the four smaller squares you have created. Each small square is exactly one-fourth, or 1/4, of the whole paper."
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 14.4,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let's take a square sheet of paper and fold it twice to create four equal squares, showing how each part is one-fourth of the whole."
+      },
+      {
+        "id": "b_0d46c5fe",
+        "type": "explain",
+        "data": {
+          "heading": "Watch Out for Equal Parts!",
+          "paragraphs": [
+            "Always remember that a fraction is only correct when all the parts are truly equal in size. If a chapati is torn into two uneven pieces, the smaller piece is not a real half.",
+            "Half means both pieces are exactly the same size. Keep this in mind whenever you divide shapes or food into fractions!"
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 9.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Always make sure your parts are equal! A torn chapati with uneven pieces does not make a true half."
+      },
+      {
+        "id": "b_5badb104",
+        "type": "number_line",
+        "data": {
+          "min": 0,
+          "max": 1,
+          "step": 0.25,
+          "marks": [
+            {
+              "value": 0,
+              "label": "0"
+            },
+            {
+              "value": 0.25,
+              "label": "1/4"
+            },
+            {
+              "value": 0.5,
+              "label": "2/4"
+            },
+            {
+              "value": 0.75,
+              "label": "3/4"
+            },
+            {
+              "value": 1,
+              "label": "1"
+            }
+          ],
+          "question": "Where do the four equal hops from 0 to 1 land on the number line?"
+        },
+        "complexity": 3,
+        "estMinutes": 6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Every fraction has a place on the number line. Let's draw a line from 0 to 1 and divide the gap into 4 equal hops to find our fourths."
+      },
+      {
+        "id": "b_dd8a1788",
+        "type": "teacher_notes",
+        "data": {
+          "points": [
+            "Watch out for common student mix-ups where children forget that fraction parts must always be equal in size.",
+            "Help students who compare denominators incorrectly by taking things slowly with concrete paper-folding exercises.",
+            "Use picture-first methods and number lines together to clearly fix these misconceptions before moving ahead."
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 0,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let's take our time with paper folding and number lines today so every student truly sees why equal parts and denominators matter so much."
+      },
+      {
+        "id": "b_5b6c0259",
+        "type": "exit_ticket",
+        "data": {
+          "questions": [
+            "Why must all parts of a whole be equal when we talk about fractions?",
+            "If a roti is cut into 4 equal parts and Meena eats 3 parts, what fraction has she eaten?",
+            "In the fraction 3/4, what does the number 4 (the denominator) tell us?"
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 4.8,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let's check what we have learned today about equal parts and fractions before we finish our lesson."
+      }
+    ]
+  },
+  "verifiedLesson": {
+    "id": "lsn_6cf7857a",
+    "title": "Lesson 2: Equivalent Fractions and Fractions of a Collection",
+    "board": "CBSE",
+    "grade": "4",
+    "subject": "Mathematics",
+    "topic": "Fractions",
+    "nLessons": 3,
+    "lessonIndex": 2,
+    "durationMins": 40,
+    "defaultComplexity": 3,
+    "visualDemand": 3,
+    "instructions": "",
+    "teacherId": "demo-teacher",
+    "materialId": "mat_003d5aec",
+    "materialIds": [
+      "mat_003d5aec"
+    ],
+    "timeFit": {
+      "plannedMins": 48,
+      "ok": false,
+      "overBy": 8,
+      "suggestion": "This lesson runs about 8 min over 40 min. Nothing was removed. Suggestion: move the activity to homework or shorten it to a 5-minute pair task."
+    },
+    "blocks": [
+      {
+        "id": "b_22874a64",
+        "type": "hook",
+        "data": {
+          "text": "Welcome, class! We use fractions all day in our daily lives without even realizing it. Whether it is pouring half a glass of milk, looking at the clock, weighing half a kilogram of sugar, or sharing one-third of a pizza, fractions are all around us."
+        },
+        "complexity": 3,
+        "estMinutes": 3.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Welcome, everyone! Take a moment to think about your day. Have you ever poured half a glass of milk or shared one-third of a pizza? Let us discover how fractions appear everywhere in our daily lives."
+      },
+      {
+        "id": "b_6aa7bf99",
+        "type": "explain",
+        "data": {
+          "heading": "Exploring Equivalent Fractions",
+          "paragraphs": [
+            "Fractions that name the same amount are called equivalent fractions. For example, 1/2, 2/4, and 4/8 all represent the exact same portion of a whole.",
+            "We can find these friendly fractions by multiplying both the numerator and the denominator by the same number. When we multiply the top and bottom of 1/2 by 2, we get 2/4.",
+            "If you check this on a paper strip, you will see that 1/2 and 2/4 cover the exact same length. Isn't it wonderful how different numbers can describe the very same amount?"
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 9.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Fractions that name the same amount are called equivalent fractions. We can find them by multiplying both the numerator and the denominator by the same number!"
+      },
+      {
+        "id": "b_367f4bdf",
+        "type": "bar_compare",
+        "data": {
+          "items": [
+            {
+              "label": "Half strip",
+              "numerator": 1,
+              "denominator": 2
+            },
+            {
+              "label": "Two-fourths strip",
+              "numerator": 2,
+              "denominator": 4
+            }
+          ],
+          "caption": "On a paper strip, 1/2 and 2/4 cover exactly the same length."
+        },
+        "complexity": 3,
+        "estMinutes": 6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let us look at our paper strip visual to see that one-half and two-fourths cover the exact same length."
+      },
+      {
+        "id": "b_853a76db",
+        "type": "explain",
+        "data": {
+          "heading": "Fractions of a Collection",
+          "paragraphs": [
+            "Fractions do not just work on single shapes; they also work on groups of things like collections of objects. If you have 12 marbles and want to find one-third of them, you first make 3 equal groups of 4 marbles each.",
+            "Once the collection is divided into equal groups, you take just one of those groups. This shows us that taking 1/3 of 12 gives us 4 marbles.",
+            "We can use this exact same grouping method for other amounts too. For example, finding 1/4 of 12 gives us 3, and taking 3/4 of 12 gives us 9."
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 9.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let's learn how fractions work with groups of items, like finding one-third of a collection of marbles by sorting them into equal groups."
+      },
+      {
+        "id": "b_ec6aa075",
+        "type": "activity",
+        "data": {
+          "title": "Finding Fractions of a Collection",
+          "materials": [
+            "12 counters or beads per student",
+            "Paper and colored pencils for drawing"
+          ],
+          "instructions": [
+            "Take 12 counters and arrange them in a straight line on your desk. To find 1/4 of 12, divide your counters into 4 equal groups. Count how many counters are in one group to find your answer.",
+            "Next, use your 12 counters to find 3/4 of 12. First make 4 equal groups, and then count how many counters are in 3 of those groups combined.",
+            "Draw your counters on a piece of paper to show your work for both problems and share your method with a partner."
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 14.4,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let's use our counters to find fractions of a collection. Watch how we split twelve items into equal groups to solve problems like one-fourth and three-fourths of twelve."
+      },
+      {
+        "id": "b_48bd50fc",
+        "type": "teacher_notes",
+        "data": {
+          "points": [
+            "Keep a close eye out for students who forget that all parts of a fraction must be completely equal in size.",
+            "Watch out for children who compare denominators incorrectly, such as guessing that 1/6 is bigger than 1/3 simply because 6 is bigger than 3.",
+            "Use slow, picture-first work with paper folding and number lines to gently guide students past these common pitfalls."
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 0,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Let's remember to watch out for common traps today, like uneven parts or misjudging denominators, and use paper folding to help students see the truth."
+      },
+      {
+        "id": "b_cd0a9c80",
+        "type": "exit_ticket",
+        "data": {
+          "questions": [
+            "Why must all parts of a shape be equal when we talk about fractions?",
+            "If you have 12 marbles and you want to find 1/4 of them, how many marbles will you take?",
+            "Which fraction is bigger: 1/3 or 1/6? Explain why using the example of cutting a laddoo."
+          ]
+        },
+        "complexity": 3,
+        "estMinutes": 4.8,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_003d5aec",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Great job today, everyone! Please take a moment to answer these three exit ticket questions on your slate or paper before you pack up."
+      }
+    ],
+    "verified": true
+  }
+}

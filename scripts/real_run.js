@@ -6,7 +6,7 @@ import { ingest } from '../src/rag.js';
 import { save } from '../src/store.js';
 import { newId } from '../src/schema.js';
 import { generateLesson, editBlock, editLesson } from '../src/engine.js';
-import { stats, resolveModelChain } from '../src/llm.js';
+import { stats, resolveModelChain, getChainTally, getDeadModels } from '../src/llm.js';
 
 if (!process.env.GEMINI_API_KEY) {
   console.log('SKIP — GEMINI_API_KEY is empty.');
@@ -63,8 +63,21 @@ const verified = await generateLesson(
 report.verifiedGenerate = delta(s, snap());
 console.log('verified generate:', report.verifiedGenerate, '| verified:', verified.verified, '| blocks:', verified.blocks.length);
 
+// Per-model summary: attempted? and outcome (ok / 503 / 429-quota / skipped-dead).
+const chainModels = await resolveModelChain();
+const dead = getDeadModels();
+const t = getChainTally();
+console.log('\n--- model chain summary ---');
+for (const model of chainModels) {
+  const row = t[model];
+  if (!row) { console.log(`  ${model}: not attempted`); continue; }
+  const outcomes = ['ok', '503', '429-quota', 'skipped-dead', 'other'].filter(k => row[k]).map(k => `${k}×${row[k]}`).join(', ');
+  console.log(`  ${model}: attempted ${row.attempted} — ${outcomes || 'no outcomes'}${dead.includes(model) ? ' [DEAD]' : ''}`);
+}
+console.log('---------------------------');
+
 if (stats.live === 0) {
-  console.log(`\nSKIP — every call fell back to mock (Gemini live=${stats.live}, mock=${stats.mock}); the key is likely rate-limited or over daily quota.`);
+  console.log(`\nSKIP — every call fell back to mock (Gemini live=${stats.live}, mock=${stats.mock}); models busy/limited across the whole chain (see summary above).`);
   console.log('Retry later with `npm run realrun`. No real latency/tokens to report; fixtures/real-run.json not overwritten with mock content.');
   process.exit(0);
 }

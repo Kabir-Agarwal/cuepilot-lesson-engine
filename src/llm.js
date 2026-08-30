@@ -11,6 +11,26 @@ const MAX_RETRIES = 3;
 const MODEL_PREF = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
 let modelChain = null;   // resolved [chosen, ...fallbacks], cached per process
 
+// Models this PROCESS has proven dead (per-model quota 429). Gemini quotas are PER MODEL,
+// so a dead model is skipped on later calls but the rest of the chain is still tried.
+const deadModels = new Set();
+export const getDeadModels = () => [...deadModels];
+
+// Cross-call tally of every model's outcomes (for realrun's end-of-run summary).
+const chainTally = new Map();   // model -> { attempted, ok, '503', '429-quota', 'skipped-dead', other }
+const tally = (model, key) => {
+  const t = chainTally.get(model) || { attempted: 0, ok: 0, '503': 0, '429-quota': 0, 'skipped-dead': 0, other: 0 };
+  if (key !== 'skipped-dead') t.attempted++;
+  t[key] = (t[key] || 0) + 1;
+  chainTally.set(model, t);
+};
+export const getChainTally = () => Object.fromEntries(chainTally);
+export const __resetChainState = () => { deadModels.clear(); chainTally.clear(); };   // test hook
+
+// The raw single-model caller, injectable so tests can drive the chain with no network.
+let geminiCaller = callGemini;
+export const __setGeminiCaller = fn => { geminiCaller = fn || callGemini; };
+
 function rankFlash(names) {
   // Newest flash last-resort: sort by the version number embedded in the name, desc.
   const ver = n => { const m = n.match(/gemini-(\d+(?:\.\d+)?)-flash/); return m ? parseFloat(m[1]) : 0; };
@@ -41,6 +61,7 @@ export async function resolveModelChain() {
 }
 
 export const getModelChain = () => modelChain;
+export const __setModelChain = chain => { modelChain = chain; };   // test hook (skips ListModels)
 
 let lastPrompt = null;
 let lastRaw = null;
@@ -128,48 +149,64 @@ async function callAnthropic(system, prompt) {
   return j.content?.map(c => c.text || '').join('') ?? '';
 }
 
-// A daily-quota 429 ("exceeded your current quota") is not transient and every model shares
-// the quota — retrying or walking the chain just hammers an exhausted key. Bail straight to mock.
-const isQuotaExhausted = e => e.status === 429 && /exceeded your current quota|quota/i.test(e.message || '');
+// A 429 that names a quota is a PER-MODEL daily/rate limit (Gemini quotas are per model).
+// It is not retryable and marks that model dead for this process — but the chain continues.
+const isQuotaError = e => e.status === 429 && /quota|exceeded|rate/i.test(e.message || '');
 
-async function callModelWithBackoff(model, system, prompt) {
+// Try ONE model with backoff (2 retries: 1s, 2s). Quota 429 throws immediately (marked dead by caller).
+async function callOneModel(model, system, prompt) {
   for (let attempt = 0; ; attempt++) {
     try {
-      return await callGemini(system, prompt, model);
+      return await geminiCaller(system, prompt, model);
     } catch (e) {
-      if (isQuotaExhausted(e)) throw e;   // don't retry a hard quota limit
-      const retryable = e.status === 429 || (e.status >= 500 && e.status < 600) || e.name === 'TypeError';
+      if (isQuotaError(e)) throw e;   // don't retry a quota limit
+      const retryable = (e.status >= 500 && e.status < 600) || e.status === 429 || e.name === 'TypeError';
       if (!retryable || attempt >= MAX_RETRIES - 1) throw e;
-      const wait = 1000 * 2 ** attempt;
-      console.warn(`[llm] ${model} ${e.message} — retrying in ${wait}ms`);
+      const wait = (Number(process.env.LLM_BACKOFF_MS) || 1000) * 2 ** attempt;
+      console.warn(`[llm] ${model} failed (${e.status || e.message}) — retry ${attempt + 1}/${MAX_RETRIES - 1} in ${wait}ms`);
       await sleep(wait);
     }
   }
 }
 
 /**
- * Gemini call across the model chain: try chosen model (backoff x3) → on failure try the
- * next model in the chain once each → the last error propagates. Emits which model answered.
+ * Walk the model chain explicitly by index. For each live (non-dead) model: try it; on success
+ * return and emit which model answered. On quota 429 → mark that model dead and CONTINUE. On any
+ * other failure → CONTINUE to the next model. Only when EVERY model is dead/failed do we throw
+ * (→ completeJSON serves mock). Returns {text, attempts:[{model, result}]}.
  */
 async function callGeminiChain(system, prompt) {
   const chain = await resolveModelChain();
+  const attempts = [];
   let lastErr;
-  for (const model of chain) {
+  for (let i = 0; i < chain.length; i++) {
+    const model = chain[i];                 // the model this iteration actually calls
+    if (deadModels.has(model)) { attempts.push({ model, result: 'skipped-dead' }); tally(model, 'skipped-dead'); continue; }
     try {
-      const out = await callModelWithBackoff(model, system, prompt);
+      const text = await callOneModel(model, system, prompt);
+      attempts.push({ model, result: 'ok' }); tally(model, 'ok');
       emitStep({ step: 'provider', provider: 'gemini', model });
-      return out;
+      return { text, attempts };
     } catch (e) {
       lastErr = e;
-      if (isQuotaExhausted(e)) {   // shared quota — the rest of the chain is pointless
-        console.warn('[llm] Gemini quota exhausted — skipping remaining models, serving mock.');
-        break;
+      if (isQuotaError(e)) {
+        deadModels.add(model);              // per-model, NOT global
+        attempts.push({ model, result: '429-quota (marked dead)' }); tally(model, '429-quota');
+        console.warn(`[llm] ${model} quota-limited (429) — marked dead for this process, advancing to next model`);
+      } else {
+        const key = e.status === 503 ? '503' : 'other';
+        attempts.push({ model, result: `${e.status || e.name || 'error'}` }); tally(model, key);
+        console.warn(`[llm] ${model} failed (${e.status || e.message}) — advancing to next model`);
       }
-      console.warn(`[llm] model ${model} failed (${e.status || e.message}) — trying next in chain`);
     }
   }
-  throw lastErr || new Error('all Gemini models failed');
+  const summary = attempts.map(a => `${a.model}=${a.result}`).join(', ');
+  console.warn(`[llm] all Gemini models exhausted (${summary}) — serving mock`);
+  throw Object.assign(lastErr || new Error('all Gemini models failed'), { chainAttempts: attempts });
 }
+
+let lastChainAttempts = [];   // per-model outcomes of the most recent chain walk (for realrun)
+export const getLastChainAttempts = () => lastChainAttempts;
 
 async function callWithBackoff(system, prompt) {
   if (provider() === 'anthropic') {
@@ -183,10 +220,18 @@ async function callWithBackoff(system, prompt) {
         }
       }
     })();
+    lastChainAttempts = [{ model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5', result: 'ok' }];
     emitStep({ step: 'provider', provider: 'anthropic', model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5' });
     return out;
   }
-  return callGeminiChain(system, prompt);
+  try {
+    const { text, attempts } = await callGeminiChain(system, prompt);
+    lastChainAttempts = attempts;
+    return text;
+  } catch (e) {
+    lastChainAttempts = e.chainAttempts || [];
+    throw e;
+  }
 }
 
 /**

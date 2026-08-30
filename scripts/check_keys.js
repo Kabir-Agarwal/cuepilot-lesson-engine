@@ -7,13 +7,7 @@ import { errorBody } from '../src/rag.js';
 
 const line = (label, msg) => console.log(`${label.padEnd(10)} ${msg}`);
 
-async function checkGemini() {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return line('GEMINI', 'SKIP — key empty; runtime uses mock. Paste GEMINI_API_KEY in .env to enable.');
-
-  const chain = await resolveModelChain();
-  line('GEMINI', `model chain (ListModels): ${chain.join(' → ')}`);
-  const model = chain[0];
+async function probeModel(key, model) {
   const t0 = Date.now();
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
@@ -21,14 +15,28 @@ async function checkGemini() {
       body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: 'Reply with the word OK.' }] }] }),
     });
     const ms = Date.now() - t0;
-    if (res.status === 503 || res.status === 429) {
-      return line('GEMINI', `KEY OK, MODEL BUSY — ${model} returned ${res.status} (high demand). Retry later; runtime degrades to mock meanwhile.`);
-    }
-    if (!res.ok) return line('GEMINI', `FAIL — http ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    const j = await res.json();
-    const text = j.candidates?.[0]?.content?.parts?.map(p => p.text).join('') ?? '';
-    line('GEMINI', `PASS — ${model}, ${ms}ms, replied: ${text.trim().slice(0, 40)}`);
-  } catch (e) { line('GEMINI', `FAIL — ${e.message}`); }
+    if (res.status === 503) return { model, status: 'BUSY (503)', ms };
+    if (res.status === 429) return { model, status: 'QUOTA/RATE (429)', ms };
+    if (!res.ok) return { model, status: `FAIL http ${res.status}`, ms, body: (await res.text()).slice(0, 120) };
+    return { model, status: 'PASS', ms };
+  } catch (e) { return { model, status: `ERROR ${e.message}`, ms: Date.now() - t0 }; }
+}
+
+async function checkGemini() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return line('GEMINI', 'SKIP — key empty; runtime uses mock. Paste GEMINI_API_KEY in .env to enable.');
+
+  const chain = await resolveModelChain();
+  line('GEMINI', `model chain (ListModels): ${chain.join(' → ')}`);
+
+  // Probe the FIRST TWO models so "one model busy" (chain healthy) vs "chain broken" is clear.
+  const probes = [];
+  for (const model of chain.slice(0, 2)) probes.push(await probeModel(key, model));
+  for (const p of probes) line('GEMINI', `  ${p.model}: ${p.status} (${p.ms}ms)${p.body ? ' — ' + p.body : ''}`);
+
+  if (probes.some(p => p.status === 'PASS')) line('GEMINI', 'VERDICT — key works; at least one chain model is live.');
+  else if (probes.every(p => /BUSY|QUOTA|RATE/.test(p.status))) line('GEMINI', 'VERDICT — KEY OK, MODELS BUSY/LIMITED — runtime advances the chain then degrades to mock. Retry later.');
+  else line('GEMINI', 'VERDICT — chain looks broken (auth/model errors above); check the key and model availability.');
 }
 
 async function checkAlchemyst() {

@@ -1,9 +1,14 @@
 // Every test runs fully offline against a scratch data dir.
+// NB: set the keys EMPTY (not delete). `import 'dotenv/config'` loads later via the app modules
+// and, if a real .env exists on disk, would RE-ADD any key we merely deleted (dotenv skips keys
+// that are absent) — which quietly turned unit tests into live Alchemyst/Gemini network calls.
+// An empty string keeps the key "present" so dotenv leaves it, and the app treats "" as no key.
 process.env.LLM_PROVIDER = 'mock';
 process.env.DATA_DIR = './data/test';
-delete process.env.GEMINI_API_KEY;
-delete process.env.ANTHROPIC_API_KEY;
-delete process.env.ALCHEMYST_AI_API_KEY;
+process.env.GEMINI_API_KEY = '';
+process.env.ANTHROPIC_API_KEY = '';
+process.env.ALCHEMYST_AI_API_KEY = '';
+process.env.DOTENV_CONFIG_QUIET = 'true';
 
 export const SPEC = {
   board: 'CBSE', grade: '4', subject: 'Mathematics', topic: 'Fractions',
