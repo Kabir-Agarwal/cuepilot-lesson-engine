@@ -73,7 +73,13 @@
       <input type="text" id="lessonInstruction" placeholder="add an assessment at the end / remove blocks 5 and 6 / make suitable for Grade 4">
       <button id="editLesson" class="ghost">Apply</button>
     </div>
-    <div class="row"><button id="duplicate" class="ghost">Duplicate lesson</button><small id="changedInfo"></small></div>
+    <div class="row">
+      <button id="duplicate" class="ghost">Duplicate lesson</button>
+      <button id="slides" class="ghost">Open slideshow ↗</button>
+      <button id="roadmap" class="ghost">Show roadmap</button>
+      <small id="changedInfo"></small>
+    </div>
+    <div id="roadmapOut" style="font-size:.9rem;color:var(--muted)"></div>
   </div>
 
   <div id="lessonHost"></div>
@@ -175,6 +181,25 @@ $('duplicate').onclick = async () => {
     say(`Duplicated as ${j.lesson.id}.`);
     refreshSaved();
   } catch (e) { say('Duplicate failed: ' + e.message); }
+};
+
+$('slides').onclick = () => {
+  if (!lesson) return say('Generate a lesson first.');
+  window.open('/lessons/' + lesson.id + '?format=slides', '_blank');
+};
+
+$('roadmap').onclick = async () => {
+  if (!materialId) return say('Upload or select a material first.');
+  say('Planning roadmap…', true);
+  try {
+    const spec = { board: $('board').value, grade: $('grade').value, subject: $('subject').value,
+      topic: $('topic').value, nLessons: $('nLessons').value };
+    const j = await api('/roadmap', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ materialId, teacherId: $('teacherId').value, spec }) });
+    $('roadmapOut').innerHTML = '<strong>Roadmap:</strong><ol>' +
+      j.lessons.map(l => `<li>${l.title} — ${l.focus}</li>`).join('') + '</ol>';
+    say(`Roadmap: ${j.lessons.length} lessons.`);
+  } catch (e) { say('Roadmap failed: ' + e.message); }
 };
 
 function paint(html) {

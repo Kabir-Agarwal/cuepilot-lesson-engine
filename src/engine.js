@@ -262,6 +262,34 @@ Use "global" ONLY when the request is about the whole lesson (grade level, tone,
   return { lesson, changedBlockIds: [...changed].filter(id => next.some(b => b.id === id)), timeFit: lesson.timeFit, ops };
 }
 
+/* ---------------- Stretch S3: multi-lesson roadmap ---------------- */
+
+export async function roadmap(input, materialId, teacherId = 'default') {
+  if (!materialId || !ensureMaterial(materialId)) throw Object.assign(new Error('a materialId is required'), { status: 400, code: 'MATERIAL_REQUIRED' });
+  const prefs = getPrefs(teacherId);
+  const spec = specFrom({ defaultComplexity: prefs.defaultComplexity, ...input }, [materialId]);
+  const chunks = await retrieve(`${spec.topic} ${spec.subject} grade ${spec.grade}`, { materialIds: [materialId], k: 4 });
+  const context = chunks.map((c, i) => `[${i + 1}] ${c.content}`).join('\n\n');
+
+  const mock = {
+    lessons: Array.from({ length: spec.nLessons }, (_, k) => ({
+      lessonIndex: k + 1,
+      title: `${spec.topic} — part ${k + 1}`,
+      focus: `Part ${k + 1} of ${spec.nLessons}: the slice of ${spec.topic} that belongs at this point in the sequence.`,
+    })),
+  };
+  const system = 'You plan a sequence of school lessons. Output ONLY JSON.';
+  const prompt = `Split "${spec.topic}" (${spec.subject}, grade ${spec.grade}, ${spec.board}) into ${spec.nLessons} lessons.
+TEACHER MATERIAL:
+${context || '(none)'}
+Return JSON {"lessons":[{"lessonIndex":number,"title":string,"focus":"one line of what this lesson covers"}]} with exactly ${spec.nLessons} entries in order.`;
+  const raw = await completeJSON({ system, prompt, mock });
+  const lessons = (raw?.lessons || mock.lessons)
+    .slice(0, spec.nLessons)
+    .map((l, k) => ({ lessonIndex: k + 1, title: String(l.title || `${spec.topic} — part ${k + 1}`), focus: String(l.focus || '') }));
+  return { topic: spec.topic, nLessons: spec.nLessons, materialId, lessons };
+}
+
 export function duplicateLesson(lessonId) {
   const src = load('lessons', lessonId);
   if (!src) throw Object.assign(new Error(`lesson ${lessonId} not found`), { status: 404 });

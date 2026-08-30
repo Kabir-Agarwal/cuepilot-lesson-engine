@@ -7,8 +7,9 @@ import { ingest, ragStatus } from './src/rag.js';
 import { newId } from './src/schema.js';
 import { save, load, list } from './src/store.js';
 import { getPrefs, putPrefs } from './src/prefs.js';
-import { generateLesson, editBlock, editLesson, duplicateLesson } from './src/engine.js';
+import { generateLesson, editBlock, editLesson, duplicateLesson, roadmap } from './src/engine.js';
 import { renderLesson, renderLessonBody, renderBlock, STYLES, SCRIPT } from './src/render/index.js';
+import { renderSlides } from './src/render/slides.js';
 import { provider, stats } from './src/llm.js';
 
 const app = express();
@@ -100,8 +101,15 @@ app.get('/lessons/:id', (req, res) => {
   const lesson = load('lessons', req.params.id);
   if (!lesson) return res.status(404).json({ error: 'lesson not found' });
   if (req.query.format === 'html') return res.type('html').send(renderLesson(lesson));
+  if (req.query.format === 'slides') return res.type('html').send(renderSlides(lesson));  // stretch S1/S2
   res.json({ lesson, html: renderLessonBody(lesson), timeFit: lesson.timeFit });
 });
+
+// Stretch S3: a multi-lesson roadmap for the whole topic.
+app.post('/roadmap', wrap(async (req, res) => {
+  const { materialId, spec = {}, teacherId = 'default' } = req.body || {};
+  res.json(await roadmap(spec, materialId, teacherId));
+}));
 
 app.get('/prefs/:teacherId', (req, res) => res.json({ prefs: getPrefs(req.params.teacherId) }));
 app.put('/prefs/:teacherId', (req, res) => res.json({ prefs: putPrefs(req.params.teacherId, req.body || {}) }));
