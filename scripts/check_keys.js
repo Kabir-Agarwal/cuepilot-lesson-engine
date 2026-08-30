@@ -8,7 +8,7 @@ const line = (label, msg) => console.log(`${label.padEnd(10)} ${msg}`);
 async function checkGemini() {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return line('GEMINI', 'SKIP — key empty; runtime uses mock. Paste GEMINI_API_KEY in .env to enable.');
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-flash-latest';
   const t0 = Date.now();
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
