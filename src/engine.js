@@ -32,9 +32,12 @@ function ensureMaterial(materialId) {
 }
 
 export async function generateLesson(input, materialId, teacherId = 'default') {
-  ensureMaterial(materialId);
+  // No upload, no lesson. (HARD RULE 9)
+  if (!materialId) throw Object.assign(new Error('a materialId is required — upload teacher material first'), { status: 400, code: 'MATERIAL_REQUIRED' });
+  const material = ensureMaterial(materialId);
+  if (!material) throw Object.assign(new Error(`material ${materialId} not found — upload it first`), { status: 400, code: 'MATERIAL_REQUIRED' });
   const prefs = getPrefs(teacherId);
-  const spec = specFrom({ defaultComplexity: prefs.defaultComplexity, ...input }, materialId ? [materialId] : []);
+  const spec = specFrom({ defaultComplexity: prefs.defaultComplexity, ...input }, [materialId]);
 
   const seed = await retrieve(`${spec.topic} grade ${spec.grade} ${spec.subject}`, {
     materialIds: spec.materialIds, k: 4,
@@ -107,11 +110,15 @@ function mockOps(instruction, lesson) {
   const ids = lesson.blocks.map(b => b.id);
   const ops = [];
 
-  // "remove blocks 5 and 6" / "delete block 2"
+  // "remove blocks 5 and 6" / "delete block 2" / "remove b_ab12cd34"
   const removeMatch = s.match(/\b(remove|delete|drop)\b([^.]*)/);
   if (removeMatch) {
-    const nums = (removeMatch[2].match(/\d+/g) || []).map(n => parseInt(n, 10));
     const named = ids.filter(id => s.includes(id.toLowerCase()));
+    // Strip any explicit block ids before reading ordinals, so hex digits inside an id
+    // (e.g. b_b85644a1) are never mistaken for "block number 1".
+    let rest = removeMatch[2];
+    named.forEach(id => { rest = rest.split(id.toLowerCase()).join(' '); });
+    const nums = (rest.match(/\d+/g) || []).map(n => parseInt(n, 10));
     const byNum = nums.map(n => ids[n - 1]).filter(Boolean);
     const blockIds = [...new Set([...named, ...byNum])];
     if (blockIds.length) ops.push({ op: 'remove', blockIds });

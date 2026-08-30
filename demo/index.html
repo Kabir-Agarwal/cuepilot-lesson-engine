@@ -36,26 +36,32 @@
   <h1 style="margin:.5rem 0 1rem;font-size:1.5rem">Lesson Engine — internal test page</h1>
 
   <div class="panel">
-    <h2>1 · Teacher material</h2>
+    <h2>1 · Teacher material (upload is mandatory)</h2>
+    <div class="grid">
+      <div><label>Teacher id</label><input id="teacherId" value="demo-teacher"></div>
+      <div><label>Subject</label><input id="subject" value="Mathematics"></div>
+      <div><label>Board</label><input id="board" value="CBSE"></div>
+      <div><label>Grade</label><input id="grade" value="4"></div>
+    </div>
     <div class="row">
       <input type="file" id="file" accept=".txt,.md,.pdf">
       <button id="upload">Upload</button>
       <small id="matinfo"></small>
     </div>
+    <div class="row" style="align-items:flex-start">
+      <div style="flex:1"><label>Your uploaded materials (pick one to build from)</label>
+        <select id="materialSelect"><option value="">— none yet —</option></select></div>
+    </div>
   </div>
 
   <div class="panel">
-    <h2>2 · Lesson spec</h2>
+    <h2>2 · Lesson spec <small style="text-transform:none;letter-spacing:0">(board/grade/subject/teacher come from the material above)</small></h2>
     <div class="grid">
-      <div><label>Board</label><input id="board" value="CBSE"></div>
-      <div><label>Grade</label><input id="grade" value="4"></div>
-      <div><label>Subject</label><input id="subject" value="Mathematics"></div>
       <div><label>Topic</label><input id="topic" value="Fractions"></div>
       <div><label>How many lessons</label><input id="nLessons" type="number" min="1" value="3"></div>
       <div><label>This is lesson #</label><input id="lessonIndex" type="number" min="1" value="1"></div>
       <div><label>Class duration (min)</label><input id="durationMins" type="number" min="5" value="45"></div>
       <div><label>Complexity 1–5</label><input id="defaultComplexity" type="number" min="1" max="5" value="2"></div>
-      <div><label>Teacher id</label><input id="teacherId" value="default"></div>
     </div>
     <div class="row"><textarea id="instructions" placeholder="Free-text instructions, e.g. use roti and paper-folding examples, go slow on equal parts"></textarea></div>
     <div class="row"><button id="generate">Generate lesson</button><span id="status"></span></div>
@@ -82,7 +88,11 @@
 <script>
 let materialId = null, lesson = null;
 const $ = id => document.getElementById(id);
-const say = (m, busy) => { $('status').textContent = m; document.querySelectorAll('button').forEach(b => b.disabled = !!busy); };
+const say = (m, busy) => {
+  $('status').textContent = m;
+  document.querySelectorAll('button').forEach(b => b.disabled = !!busy);
+  if (!busy) $('generate').disabled = !materialId;   // stays locked until a material is chosen
+};
 
 async function api(url, opts) {
   const res = await fetch(url, opts);
@@ -91,23 +101,39 @@ async function api(url, opts) {
   return j;
 }
 
+function gateGenerate() { $('generate').disabled = !materialId; }
+
 $('upload').onclick = async () => {
   if (!$('file').files[0]) return say('Pick a .txt, .md or .pdf first.');
   const fd = new FormData();
   fd.append('file', $('file').files[0]);
-  ['board','grade','subject'].forEach(k => fd.append(k, $(k).value));
+  ['teacherId','subject','board','grade'].forEach(k => fd.append(k, $(k).value));
   say('Uploading…', true);
   try {
     const j = await api('/ingest', { method: 'POST', body: fd });
     materialId = j.materialId;
     $('matinfo').textContent = `${j.name} · ${j.chars} chars · ${j.chunks} chunks`;
-    say('Material ingested.');
+    say('Material ingested. You can generate now.');
+    await refreshMaterials();
+    $('materialSelect').value = materialId;
+    gateGenerate();
   } catch (e) { say('Upload failed: ' + e.message); }
 };
 
+async function refreshMaterials() {
+  const j = await api('/materials?teacherId=' + encodeURIComponent($('teacherId').value));
+  const sel = $('materialSelect');
+  sel.innerHTML = '<option value="">— none yet —</option>' + j.materials.map(m =>
+    `<option value="${m.id}">${m.filename} · ${m.subject} · grade ${m.grade} · ${m.chunks} chunks</option>`).join('');
+  if (materialId) sel.value = materialId;
+}
+$('materialSelect').onchange = () => { materialId = $('materialSelect').value || null; gateGenerate();
+  $('matinfo').textContent = materialId ? 'Selected material ' + materialId : ''; };
+
 $('generate').onclick = async () => {
-  const spec = {};
-  ['board','grade','subject','topic','nLessons','lessonIndex','durationMins','defaultComplexity','instructions']
+  if (!materialId) return say('Upload or select a material first — generation needs one.');
+  const spec = { board: $('board').value, grade: $('grade').value, subject: $('subject').value };
+  ['topic','nLessons','lessonIndex','durationMins','defaultComplexity','instructions']
     .forEach(k => spec[k] = $(k).value);
   say('Generating…', true);
   try {
@@ -120,6 +146,7 @@ $('generate').onclick = async () => {
     say(`Lesson ready · ${j.timeFit.plannedMins} min planned` + (j.timeFit.ok ? '' : ' · OVER TIME'));
     refreshSaved();
   } catch (e) { say('Generate failed: ' + e.message); }
+  gateGenerate();
 };
 
 $('editLesson').onclick = async () => {
@@ -202,6 +229,8 @@ async function refreshSaved() {
   });
 }
 refreshSaved();
+refreshMaterials();
+gateGenerate();
 </script>
 </body>
 </html>

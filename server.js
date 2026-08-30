@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { pathToFileURL } from 'node:url';
 import express from 'express';
 import multer from 'multer';
 import { extractText } from './src/pdf.js';
@@ -16,8 +17,8 @@ app.use(express.static('demo'));
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 const wrap = fn => (req, res) => fn(req, res).catch(e => {
-  console.error('[api]', e);
-  res.status(e.status || 500).json({ error: e.message });
+  console.error('[api]', e.message);
+  res.status(e.status || 500).json({ error: e.message, code: e.code });
 });
 
 // The renderer's own CSS/JS, so any host page can embed rendered lesson HTML.
@@ -32,24 +33,39 @@ app.post('/ingest', upload.single('file'), wrap(async (req, res) => {
   const name = req.file.originalname || 'material.txt';
   if (!/\.(txt|md|pdf)$/i.test(name)) throw Object.assign(new Error('only .txt, .md and .pdf are supported'), { status: 400 });
 
+  const { teacherId, subject, board, grade } = req.body || {};
+  const missing = ['teacherId', 'subject', 'board', 'grade'].filter(f => !String(req.body?.[f] || '').trim());
+  if (missing.length) throw Object.assign(new Error(`missing required field(s): ${missing.join(', ')}`), { status: 400, code: 'MATERIAL_METADATA_REQUIRED' });
+
   const text = await extractText(req.file.buffer, name);
   if (!text.trim()) throw Object.assign(new Error('no text could be extracted from that file'), { status: 400 });
 
   const materialId = newId('mat');
+  const attribution = req.body.attribution || `Teacher upload, ${name}`;
   const chunks = await ingest(text, {
     materialId,
     source_id: materialId,
     source_name: name,
-    board: req.body.board || '',
-    grade: req.body.grade || '',
-    subject: req.body.subject || '',
+    board, grade, subject,
     content_type: 'chapter',
     authority_level: req.body.authority_level || 'teacher_upload',
-    attribution_string: req.body.attribution || `Teacher upload, ${name}`,
+    attribution_string: attribution,
   });
-  save('materials', materialId, { materialId, name, chars: text.length, chunks });
+  save('materials', materialId, {
+    id: materialId, materialId, teacherId, subject, board, grade,
+    filename: name, name, attribution, chars: text.length, uploadedAt: new Date().toISOString(), chunks,
+  });
   res.json({ materialId, name, chars: text.length, chunks: chunks.length });
 }));
+
+app.get('/materials', (req, res) => {
+  const { teacherId } = req.query;
+  const mats = list('materials')
+    .filter(m => !teacherId || m.teacherId === teacherId)
+    .map(({ chunks, ...m }) => ({ ...m, chunks: chunks?.length ?? 0 }))
+    .sort((a, b) => String(b.uploadedAt).localeCompare(String(a.uploadedAt)));
+  res.json({ materials: mats });
+});
 
 app.post('/generate', wrap(async (req, res) => {
   const { materialId, spec = {}, teacherId = 'default' } = req.body || {};
@@ -90,5 +106,10 @@ app.get('/lessons/:id', (req, res) => {
 app.get('/prefs/:teacherId', (req, res) => res.json({ prefs: getPrefs(req.params.teacherId) }));
 app.put('/prefs/:teacherId', (req, res) => res.json({ prefs: putPrefs(req.params.teacherId, req.body || {}) }));
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Lesson engine on http://localhost:${port} (provider: ${provider()})`));
+export { app };
+
+// Only bind a port when run directly (node server.js), so tests can import the app.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const port = process.env.PORT || 3000;
+  app.listen(port, () => console.log(`Lesson engine on http://localhost:${port} (provider: ${provider()})`));
+}

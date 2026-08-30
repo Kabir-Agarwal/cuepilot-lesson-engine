@@ -35,6 +35,35 @@ test('generate: mock provider produces a valid, deterministic, cited lesson', as
   assert.equal(strip(a), strip(b));
 });
 
+test('generate: without a materialId is refused with 400 MATERIAL_REQUIRED', async () => {
+  await assert.rejects(
+    () => generateLesson(SPEC, undefined, 'default'),
+    e => e.status === 400 && e.code === 'MATERIAL_REQUIRED');
+  await assert.rejects(
+    () => generateLesson(SPEC, 'mat_ghost', 'default'),
+    e => e.status === 400 && e.code === 'MATERIAL_REQUIRED');
+});
+
+test('rag scoping: a lesson built from material A never cites material B', async () => {
+  const { ingest } = await import('../src/rag.js');
+  const A = 'mat_scopeA', B = 'mat_scopeB';
+  const chunksA = await ingest('Photosynthesis lets plants make food from sunlight and water in the leaf.', {
+    materialId: A, source_id: A, source_name: 'bio.txt', board: 'CBSE', grade: '4', subject: 'Science',
+    authority_level: 'teacher_upload', attribution_string: 'Teacher upload, bio.txt',
+  });
+  const chunksB = await ingest('Fractions break a whole into equal parts with a numerator and denominator.', {
+    materialId: B, source_id: B, source_name: 'frac.txt', board: 'CBSE', grade: '4', subject: 'Mathematics',
+    authority_level: 'teacher_upload', attribution_string: 'Teacher upload, frac.txt',
+  });
+  save('materials', A, { id: A, materialId: A, name: 'bio.txt', chunks: chunksA });
+  save('materials', B, { id: B, materialId: B, name: 'frac.txt', chunks: chunksB });
+
+  const lesson = await generateLesson({ ...SPEC, subject: 'Science', topic: 'Photosynthesis' }, A, 'default');
+  const cited = new Set(lesson.blocks.flatMap(b => b.sourceRefs.map(r => r.sourceId)));
+  assert.ok(cited.has(A) || cited.size === 0);
+  assert.ok(!cited.has(B), 'material B must never be cited in a material-A lesson');
+});
+
 test('generate: the complexity directive reaches the model prompt', async () => {
   await seedMaterial();
   await generateLesson({ ...SPEC, defaultComplexity: 5 }, MAT, 'default');
@@ -97,6 +126,17 @@ test('editLesson: add-at-end + remove leave every unnamed block byte-identical',
     assert.equal(JSON.stringify(b), before.get(b.id), `untouched block ${b.id} must be byte-identical`);
   }
   assert.equal(validateLesson(out.lesson).ok, true);
+});
+
+test('editLesson: removing one block by id never removes extra blocks (hex-digit ordinal trap)', async () => {
+  await seedMaterial();
+  const lesson = await generateLesson(SPEC, MAT, 'default');
+  const n = lesson.blocks.length;
+  const victim = lesson.blocks[2].id;   // ids contain hex digits that must NOT be read as ordinals
+  const out = await editLesson(lesson.id, `remove ${victim}`);
+  assert.equal(out.lesson.blocks.length, n - 1, 'exactly one block removed');
+  assert.ok(!out.lesson.blocks.some(b => b.id === victim));
+  assert.equal(out.lesson.blocks[0].type, 'hook', 'the hook was not collaterally removed');
 });
 
 test('editLesson: a global re-grade regenerates every block and re-runs fitCheck', async () => {

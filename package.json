@@ -7,6 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test \"test/*.test.js\"",
+    "checkkeys": "node scripts/check_keys.js",
+    "realrun": "node scripts/real_run.js",
     "seed": "node scripts/seed_ncert.js"
   },
   "engines": {

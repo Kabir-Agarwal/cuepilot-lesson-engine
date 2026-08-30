@@ -66,7 +66,8 @@ async function alchemystAdd(chunks) {
         source: chunks[0].source_name,
         context_type: 'resource',
         scope: 'internal',
-        metadata: { fileName: chunks[0].source_name, fileType: 'text/plain' },
+        groupName: chunks[0].source_id,   // one group per material — keeps retrieval scoped
+        metadata: { fileName: chunks[0].source_name, fileType: 'text/plain', groupName: chunks[0].source_id },
       }),
     });
     ragStatus.alchemystAdd = res.ok ? 'ok' : `http ${res.status}`;
@@ -78,7 +79,7 @@ async function alchemystAdd(chunks) {
   }
 }
 
-async function alchemystSearch(query) {
+async function alchemystSearch(query, materialIds) {
   const key = process.env.ALCHEMYST_AI_API_KEY;
   if (!key) return null;
   ragStatus.alchemystTried = true;
@@ -86,7 +87,10 @@ async function alchemystSearch(query) {
     const res = await fetch(`${ALCHEMYST_BASE}/context/search`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
-      body: JSON.stringify({ query, similarity_threshold: 0.7, minimum_similarity_score: 0.7, scope: 'internal' }),
+      body: JSON.stringify({
+        query, similarity_threshold: 0.7, minimum_similarity_score: 0.7, scope: 'internal',
+        ...(materialIds?.length === 1 ? { groupName: materialIds[0] } : {}),
+      }),
     });
     if (!res.ok) {
       ragStatus.alchemystSearch = `http ${res.status}`;
@@ -134,7 +138,9 @@ function localSearch(intent, materialIds) {
  */
 export async function retrieve(intent, filters = {}) {
   const { materialIds, board, grade, subject, k = 3 } = filters;
-  let hits = await alchemystSearch(intent);
+  let hits = await alchemystSearch(intent, materialIds);
+  // Alchemyst groups may not be perfectly isolated — enforce scoping ourselves, always.
+  if (hits && materialIds?.length) hits = hits.filter(c => materialIds.includes(c.source_id));
   if (!hits || !hits.length) hits = localSearch(intent, materialIds);
 
   const match = (a, b) => !a || !b || String(a).toLowerCase() === String(b).toLowerCase();
