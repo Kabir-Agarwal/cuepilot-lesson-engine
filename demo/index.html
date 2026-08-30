@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lesson Engine — internal test page</title>
+<link rel="stylesheet" href="/lesson.css">
+<style>
+  body{background:var(--wash)}
+  .shell{max-width:52rem;margin:0 auto;padding:1.5rem 1.25rem 4rem}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.15rem;margin-bottom:1rem}
+  .panel h2{font-size:.75rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 .75rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.6rem}
+  label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:.2rem}
+  input,select,textarea,button{font:inherit}
+  input,select,textarea{width:100%;padding:.45rem .55rem;border:1px solid var(--line);border-radius:8px;background:#fff}
+  textarea{min-height:3.2rem;resize:vertical}
+  button{padding:.5rem .9rem;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  button.ghost{background:#fff;color:var(--accent)}
+  button:disabled{opacity:.5;cursor:progress}
+  .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.75rem}
+  .row > input,.row > textarea{flex:1;min-width:12rem}
+  .editbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.8rem;padding-top:.7rem;border-top:1px dashed var(--line)}
+  .editbar input[type=text]{flex:1;min-width:10rem}
+  .editbar input[type=range]{width:8rem;padding:0}
+  .editbar small{color:var(--muted)}
+  .block.flash{animation:flash 1.2s ease-out}
+  @keyframes flash{from{box-shadow:0 0 0 3px var(--accent-soft)}to{box-shadow:none}}
+  #status{font-size:.85rem;color:var(--muted);min-height:1.2em}
+  .saved{display:grid;gap:.35rem}
+  .saved-item{display:flex;gap:.5rem;align-items:center;justify-content:space-between;font-size:.9rem;border-bottom:1px solid var(--line);padding:.35rem 0}
+</style>
+</head>
+<body>
+<div class="shell">
+  <h1 style="margin:.5rem 0 1rem;font-size:1.5rem">Lesson Engine — internal test page</h1>
+
+  <div class="panel">
+    <h2>1 · Teacher material</h2>
+    <div class="row">
+      <input type="file" id="file" accept=".txt,.md,.pdf">
+      <button id="upload">Upload</button>
+      <small id="matinfo"></small>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2 · Lesson spec</h2>
+    <div class="grid">
+      <div><label>Board</label><input id="board" value="CBSE"></div>
+      <div><label>Grade</label><input id="grade" value="4"></div>
+      <div><label>Subject</label><input id="subject" value="Mathematics"></div>
+      <div><label>Topic</label><input id="topic" value="Fractions"></div>
+      <div><label>How many lessons</label><input id="nLessons" type="number" min="1" value="3"></div>
+      <div><label>This is lesson #</label><input id="lessonIndex" type="number" min="1" value="1"></div>
+      <div><label>Class duration (min)</label><input id="durationMins" type="number" min="5" value="45"></div>
+      <div><label>Complexity 1–5</label><input id="defaultComplexity" type="number" min="1" max="5" value="2"></div>
+      <div><label>Teacher id</label><input id="teacherId" value="default"></div>
+    </div>
+    <div class="row"><textarea id="instructions" placeholder="Free-text instructions, e.g. use roti and paper-folding examples, go slow on equal parts"></textarea></div>
+    <div class="row"><button id="generate">Generate lesson</button><span id="status"></span></div>
+  </div>
+
+  <div class="panel">
+    <h2>3 · Lesson-level edit (conversational)</h2>
+    <div class="row">
+      <input type="text" id="lessonInstruction" placeholder="add an assessment at the end / remove blocks 5 and 6 / make suitable for Grade 4">
+      <button id="editLesson" class="ghost">Apply</button>
+    </div>
+    <div class="row"><button id="duplicate" class="ghost">Duplicate lesson</button><small id="changedInfo"></small></div>
+  </div>
+
+  <div id="lessonHost"></div>
+
+  <div class="panel">
+    <h2>Saved lessons</h2>
+    <div class="saved" id="saved"></div>
+  </div>
+</div>
+
+<script src="/lesson.js"></script>
+<script>
+let materialId = null, lesson = null;
+const $ = id => document.getElementById(id);
+const say = (m, busy) => { $('status').textContent = m; document.querySelectorAll('button').forEach(b => b.disabled = !!busy); };
+
+async function api(url, opts) {
+  const res = await fetch(url, opts);
+  const j = await res.json().catch(() => ({ error: 'bad response' }));
+  if (!res.ok) throw new Error(j.error || res.statusText);
+  return j;
+}
+
+$('upload').onclick = async () => {
+  if (!$('file').files[0]) return say('Pick a .txt, .md or .pdf first.');
+  const fd = new FormData();
+  fd.append('file', $('file').files[0]);
+  ['board','grade','subject'].forEach(k => fd.append(k, $(k).value));
+  say('Uploading…', true);
+  try {
+    const j = await api('/ingest', { method: 'POST', body: fd });
+    materialId = j.materialId;
+    $('matinfo').textContent = `${j.name} · ${j.chars} chars · ${j.chunks} chunks`;
+    say('Material ingested.');
+  } catch (e) { say('Upload failed: ' + e.message); }
+};
+
+$('generate').onclick = async () => {
+  const spec = {};
+  ['board','grade','subject','topic','nLessons','lessonIndex','durationMins','defaultComplexity','instructions']
+    .forEach(k => spec[k] = $(k).value);
+  say('Generating…', true);
+  try {
+    const j = await api('/generate', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ materialId, spec, teacherId: $('teacherId').value }),
+    });
+    lesson = j.lesson;
+    paint(j.html);
+    say(`Lesson ready · ${j.timeFit.plannedMins} min planned` + (j.timeFit.ok ? '' : ' · OVER TIME'));
+    refreshSaved();
+  } catch (e) { say('Generate failed: ' + e.message); }
+};
+
+$('editLesson').onclick = async () => {
+  if (!lesson) return say('Generate a lesson first.');
+  const instruction = $('lessonInstruction').value.trim();
+  if (!instruction) return say('Type a lesson-level instruction.');
+  say('Applying lesson edit…', true);
+  try {
+    const j = await api('/edit-lesson', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ lessonId: lesson.id, instruction }),
+    });
+    lesson = j.lesson;
+    paint(j.html);
+    j.changedBlockIds.forEach(id => document.querySelector(`[data-block-id="${id}"]`)?.classList.add('flash'));
+    $('changedInfo').textContent = `ops: ${JSON.stringify(j.ops)} · changed: ${j.changedBlockIds.join(', ') || 'none'}`;
+    say(j.note || `Applied. ${j.changedBlockIds.length} block(s) changed, the rest untouched.`);
+  } catch (e) { say('Lesson edit failed: ' + e.message); }
+};
+
+$('duplicate').onclick = async () => {
+  if (!lesson) return say('Generate a lesson first.');
+  say('Duplicating…', true);
+  try {
+    const j = await api(`/lessons/${lesson.id}/duplicate`, { method: 'POST' });
+    say(`Duplicated as ${j.lesson.id}.`);
+    refreshSaved();
+  } catch (e) { say('Duplicate failed: ' + e.message); }
+};
+
+function paint(html) {
+  $('lessonHost').innerHTML = html;
+  document.querySelectorAll('#lessonHost .block').forEach(addEditBar);
+}
+
+function addEditBar(el) {
+  const id = el.dataset.blockId;
+  const bar = document.createElement('div');
+  bar.className = 'editbar';
+  bar.innerHTML = `
+    <input type="text" placeholder="Edit this block…" data-role="prompt">
+    <label style="margin:0">simple <input type="range" min="1" max="5" value="${el.querySelector('.badge')?.textContent.replace('C','') || 3}" data-role="slider"> complex</label>
+    <button class="ghost" data-role="go">Edit</button>
+    <small data-role="msg"></small>`;
+  el.appendChild(bar);
+  bar.querySelector('[data-role=go]').onclick = async () => {
+    const instruction = bar.querySelector('[data-role=prompt]').value.trim();
+    const complexity = Number(bar.querySelector('[data-role=slider]').value);
+    bar.querySelector('[data-role=msg]').textContent = 'working…';
+    say('Editing block ' + id + '…', true);
+    try {
+      const j = await api('/edit-block', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lessonId: lesson.id, blockId: id, instruction: instruction || undefined, complexity }),
+      });
+      const tmp = document.createElement('div');
+      tmp.innerHTML = j.blockHtml;
+      const fresh = tmp.firstElementChild;
+      el.replaceWith(fresh);            // only this block is swapped
+      addEditBar(fresh);
+      fresh.classList.add('flash');
+      say(`Block updated · ${j.timeFit.plannedMins} min planned` + (j.timeFit.ok ? '' : ' · OVER TIME'));
+    } catch (e) { say('Block edit failed: ' + e.message); }
+  };
+}
+
+async function refreshSaved() {
+  const j = await api('/lessons');
+  $('saved').innerHTML = j.lessons.map(l =>
+    `<div class="saved-item"><span>${l.title} — grade ${l.grade}, ${l.blocks} blocks</span>
+     <span><button class="ghost" data-open="${l.id}">Reopen</button>
+     <button class="ghost" data-dup="${l.id}">Duplicate</button></span></div>`).join('') || '<small>none yet</small>';
+  $('saved').querySelectorAll('[data-open]').forEach(b => b.onclick = async () => {
+    const j2 = await api('/lessons/' + b.dataset.open);
+    lesson = j2.lesson; paint(j2.html); say('Reopened ' + lesson.id);
+  });
+  $('saved').querySelectorAll('[data-dup]').forEach(b => b.onclick = async () => {
+    await api(`/lessons/${b.dataset.dup}/duplicate`, { method: 'POST' });
+    refreshSaved(); say('Duplicated.');
+  });
+}
+refreshSaved();
+</script>
+</body>
+</html>
