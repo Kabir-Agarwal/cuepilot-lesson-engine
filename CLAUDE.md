@@ -17,7 +17,7 @@ node --test --test-name-pattern="byte-identical" test/*.test.js   # tests matchi
 
 ESM only (`"type":"module"`), Node >=18, native `fetch`, `node:test`. No build step, no linter configured. Env comes from `.env` (git-ignored; copy `.env.example`). With no keys the whole app runs in **mock** mode — same shapes, canned deterministic content, zero network.
 
-`test/setup.js` forces `LLM_PROVIDER=mock` and `DATA_DIR=./data/test`, and deletes all API keys — every test runs fully offline. Import it (for `SPEC`/`MATERIAL`) before touching engine modules.
+`test/setup.js` forces `LLM_PROVIDER=mock` and `DATA_DIR=./data/test`, and sets all API keys **empty** — every test runs fully offline. (Empty, not deleted: a transitive `import 'dotenv/config'` would otherwise re-add keys from an on-disk `.env` and turn tests into live network calls.) Import it (for `SPEC`/`MATERIAL`) before touching engine modules.
 
 ## The one rule that shapes everything
 
@@ -40,7 +40,7 @@ resolveMaterialIds (no upload -> 400 MATERIAL_REQUIRED)
 Key invariants and non-obvious wiring:
 
 - **`completeJSON` (`src/llm.js`) is the single LLM door.** All model calls go through it. It serialises every call on one global promise queue (500ms gap), does 429/5xx backoff ×3, one JSON repair-retry, and — critically — **falls back to the caller-supplied `mock` value on any failure rather than throwing**. So a dead key or 503 degrades to mock content mid-request instead of a 500. `provider()` returns `'mock'` whenever the selected provider's key is missing. Planner/filler/editLesson each *also* catch and degrade to mock as a second belt.
-- **Model selection is dynamic.** On first Gemini use, `resolveModelChain()` calls ListModels and orders available models (`gemini-flash-latest` -> `gemini-flash-lite-latest` -> newest `*flash*`). Nothing is hardcoded. A daily-quota 429 short-circuits the whole chain straight to mock (retrying a shared exhausted quota just hammers it).
+- **Model selection is dynamic, and the chain advances per model.** On first Gemini use, `resolveModelChain()` calls ListModels and orders available models (`gemini-flash-latest` -> `gemini-flash-lite-latest` -> newest `*flash*`). Nothing is hardcoded. `callGeminiChain` walks the chain by index: each model is retried (×2 backoff) then it advances to the NEXT model. Gemini quotas are **per model**, so a quota-429 marks only THAT model dead for the process and the chain continues; mock is served only after every model is dead/failed. (This supersedes the earlier global-short-circuit behavior.)
 - **`executeOps` (`src/engine.js`) is the ONE place a lesson mutates via ops**, shared by `editLesson` (Path B) and the verifier. Untouched blocks are the **same object references** (never regenerated) — this byte-identity guarantee is tested repeatedly and must be preserved. `editBlock` (Path A) mutates exactly one array index the same way.
 - **Fresh per-block retrieval.** `fillBlock` retrieves for each block's own intent, so `sourceRefs` reflect the chunks that actually fed it — and an edited block is re-grounded against its NEW intent.
 - **RAG is material-scoped, always.** `rag.js` tries Alchemyst (best-effort, per-material group), falls back to a local keyword index, and re-enforces `materialIds` scoping client-side even if Alchemyst leaks. Rank = similarity × `AUTHORITY_WEIGHT` (teacher_upload > curriculum_authority > other). The local `store` Map is rehydrated from saved chunks on restart via `ensureMaterials`.
