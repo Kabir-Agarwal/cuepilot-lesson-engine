@@ -2,7 +2,7 @@
 // block's narration via the browser's speechSynthesis, and interactives autoplay on entry.
 import { renderBlock, STYLES, esc } from './index.js';
 
-export function renderSlides(lesson) {
+export function renderSlides(lesson, { autoplay = false } = {}) {
   const slides = lesson.blocks.map((b, i) => `
     <section class="slide" data-i="${i}" data-narration="${esc(b.narration || '')}">
       <div class="slide-inner">${renderBlock(b)}</div>
@@ -64,5 +64,7 @@ document.getElementById('next').onclick = ()=>show(i+1);
 document.getElementById('play').onclick = ()=>{ playing=!playing; sync(); if(playing) speak(); else speechSynthesis.cancel(); };
 document.addEventListener('keydown', e=>{ if(e.key==='ArrowRight')show(i+1); if(e.key==='ArrowLeft')show(i-1); });
 show(0);
+${autoplay ? `// animated mode: auto-advance with narration on load (needs a user gesture in some browsers)
+playing = true; sync(); try { speak(); } catch (e) {}` : ''}
 </script></body></html>`;
 }

@@ -1,0 +1,29 @@
+{
+  "block": {
+    "id": "b_a8b7b9d5",
+    "type": "explain",
+    "data": {
+      "heading": "Understanding Fractions",
+      "paragraphs": [
+        "Explain the core idea of Fractions using the teacher's own examples — revised so that: use a cricket example",
+        "We build the idea of Fractions step by step, using the examples from your own material.",
+        "Say it out loud in your own words before moving on."
+      ]
+    },
+    "complexity": 4,
+    "estMinutes": 9.6,
+    "sourceRefs": [
+      {
+        "sourceId": "mat_17a2096b",
+        "sourceName": "fractions.txt",
+        "attribution": "Teacher upload, fractions.txt"
+      }
+    ],
+    "narration": "Explain the core idea of Fractions using the teacher's own examples — revised so that: use a cricket example"
+  },
+  "blockHtml": "<article class=\"block …\">…</article>",
+  "timeFit": {
+    "plannedMins": 42,
+    "ok": true
+  }
+}

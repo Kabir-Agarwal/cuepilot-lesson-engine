@@ -1,0 +1,10 @@
+{
+  "prefs": {
+    "teacherId": "demo-teacher",
+    "textDensity": "medium",
+    "simpleLanguage": false,
+    "tone": "warm",
+    "defaultComplexity": 3,
+    "defaultVisualDemand": 3
+  }
+}

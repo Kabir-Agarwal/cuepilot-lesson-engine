@@ -1,0 +1,243 @@
+{
+  "lesson": {
+    "id": "lsn_3f37767a",
+    "title": "Fractions: Lesson 1 of 3",
+    "board": "CBSE",
+    "grade": "4",
+    "subject": "Mathematics",
+    "topic": "Fractions",
+    "nLessons": 3,
+    "lessonIndex": 1,
+    "durationMins": 45,
+    "defaultComplexity": 2,
+    "visualDemand": 3,
+    "instructions": "use roti and paper-folding examples",
+    "teacherId": "demo-teacher",
+    "materialId": "mat_17a2096b",
+    "materialIds": [
+      "mat_17a2096b"
+    ],
+    "timeFit": {
+      "plannedMins": 42,
+      "ok": true,
+      "notice": "1 planned block(s) did not fit 45 min and were not generated. Nothing from your material was cut mid-block."
+    },
+    "blocks": [
+      {
+        "id": "b_bae7cfde",
+        "type": "hook",
+        "data": {
+          "text": "Think about Fractions in your own day (level 2). A real-life opening question about Fractions for grade 4"
+        },
+        "complexity": 2,
+        "estMinutes": 3.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "A real-life opening question about Fractions for grade 4"
+      },
+      {
+        "id": "b_a8b7b9d5",
+        "type": "explain",
+        "data": {
+          "heading": "Understanding Fractions",
+          "paragraphs": [
+            "Explain the core idea of Fractions using the teacher's own examples",
+            "We build the idea of Fractions step by step, using the examples from your own material."
+          ]
+        },
+        "complexity": 2,
+        "estMinutes": 9.6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Explain the core idea of Fractions using the teacher's own examples"
+      },
+      {
+        "id": "b_380907a2",
+        "type": "number_line",
+        "data": {
+          "min": 0,
+          "max": 1,
+          "step": 0.25,
+          "marks": [
+            {
+              "value": 0,
+              "label": "0"
+            },
+            {
+              "value": 0.25,
+              "label": "1/4"
+            },
+            {
+              "value": 0.5,
+              "label": "2/4"
+            },
+            {
+              "value": 0.75,
+              "label": "3/4"
+            },
+            {
+              "value": 1,
+              "label": "1"
+            }
+          ],
+          "question": "Tap each mark. Place Fractions values on a number line from the material"
+        },
+        "complexity": 2,
+        "estMinutes": 6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Place Fractions values on a number line from the material"
+      },
+      {
+        "id": "b_6be95f6e",
+        "type": "bar_compare",
+        "data": {
+          "items": [
+            {
+              "label": "One half",
+              "numerator": 1,
+              "denominator": 2
+            },
+            {
+              "label": "One third",
+              "numerator": 1,
+              "denominator": 3
+            },
+            {
+              "label": "One sixth",
+              "numerator": 1,
+              "denominator": 6
+            }
+          ],
+          "caption": "Compare quantities from the Fractions material as bars"
+        },
+        "complexity": 2,
+        "estMinutes": 6,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Compare quantities from the Fractions material as bars"
+      },
+      {
+        "id": "b_b3d0b1d0",
+        "type": "sequence",
+        "data": {
+          "steps": [
+            {
+              "title": "Look",
+              "text": "Look closely at the Fractions example in front of you."
+            },
+            {
+              "title": "Try",
+              "text": "The hands-on steps for Fractions described in the material"
+            },
+            {
+              "title": "Check",
+              "text": "Check your answer with your partner and say why."
+            }
+          ]
+        },
+        "complexity": 2,
+        "estMinutes": 7.2,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "The hands-on steps for Fractions described in the material"
+      },
+      {
+        "id": "b_803c8327",
+        "type": "mcq",
+        "data": {
+          "question": "Which statement about Fractions is correct?",
+          "options": [
+            "The parts do not have to be equal",
+            "The parts must all be equal",
+            "Fractions only works with two parts",
+            "Fractions has nothing to do with sharing"
+          ],
+          "answerIndex": 1,
+          "explanation": "One check-understanding question on the commonest Fractions mistake"
+        },
+        "complexity": 2,
+        "estMinutes": 4.8,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "One check-understanding question on the commonest Fractions mistake"
+      },
+      {
+        "id": "b_e8da0052",
+        "type": "exit_ticket",
+        "data": {
+          "questions": [
+            "In one sentence, what is Fractions?",
+            "Two short exit questions on Fractions"
+          ]
+        },
+        "complexity": 2,
+        "estMinutes": 4.8,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Two short exit questions on Fractions"
+      },
+      {
+        "id": "b_0d49c427",
+        "type": "teacher_notes",
+        "data": {
+          "points": [
+            "Misconceptions and pacing notes for Fractions",
+            "Watch for learners who rush this part of Fractions."
+          ]
+        },
+        "complexity": 2,
+        "estMinutes": 0,
+        "sourceRefs": [
+          {
+            "sourceId": "mat_17a2096b",
+            "sourceName": "fractions.txt",
+            "attribution": "Teacher upload, fractions.txt"
+          }
+        ],
+        "narration": "Misconceptions and pacing notes for Fractions"
+      }
+    ]
+  },
+  "html": "<section class=\"lesson\" data-lesson-id=\"lsn_3f37767a\">\n  <header class=\"lesson-head\">\n    <h1>Fractions: Lesson 1 of 3</h1>\n    <p class=\"lesson-meta\">CBSE · Grade 4 · Mathematics · Lesson 1 of 3 · 45 min</p>\n  </header>\n  <p class=\"timefit ok\">Fits: about 42 min of 45 min.</p>\n  <div class=\"blocks\"><article class=\"block block--hook\" data-block-id=\"b_bae7cfde\" data-type=\"hook\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Hook</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">3.6 min</span></span>\n  </header>\n  <div class=\"block-body\"><p class=\"lead\">Think about Fractions in your own day (level 2). A real-life opening question about Fractions for grade 4</p></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--explain\" data-block-id=\"b_a8b7b9d5\" data-type=\"explain\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Explanation</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">9.6 min</span></span>\n  </header>\n  <div class=\"block-body\"><h3>Understanding Fractions</h3><p>Explain the core idea of Fractions using the teacher&#39;s own examples</p><p>We build the idea of Fractions step by step, using the examples from your own material.</p></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--number_line\" data-block-id=\"b_380907a2\" data-type=\"number_line\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Number line</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">6 min</span></span>\n  </header>\n  <div class=\"block-body\"><p class=\"q\">Tap each mark. Place Fractions values on a number line from the material</p>\n<div class=\"number-line\" data-min=\"0\" data-max=\"1\" data-step=\"0.25\">\n  <div class=\"nl-track\"><div class=\"nl-hopper\" aria-hidden=\"true\"></div><button type=\"button\" class=\"nl-mark\" data-i=\"0\" style=\"left:0.000%\" aria-label=\"0\"><span class=\"nl-dot\"></span><span class=\"nl-lbl\">0</span></button><button type=\"button\" class=\"nl-mark\" data-i=\"1\" style=\"left:25.000%\" aria-label=\"1/4\"><span class=\"nl-dot\"></span><span class=\"nl-lbl\">1/4</span></button><button type=\"button\" class=\"nl-mark\" data-i=\"2\" style=\"left:50.000%\" aria-label=\"2/4\"><span class=\"nl-dot\"></span><span class=\"nl-lbl\">2/4</span></button><button type=\"button\" class=\"nl-mark\" data-i=\"3\" style=\"left:75.000%\" aria-label=\"3/4\"><span class=\"nl-dot\"></span><span class=\"nl-lbl\">3/4</span></button><button type=\"button\" class=\"nl-mark\" data-i=\"4\" style=\"left:100.000%\" aria-label=\"1\"><span class=\"nl-dot\"></span><span class=\"nl-lbl\">1</span></button></div>\n  <p class=\"nl-readout\" role=\"status\">Tap a mark to hop along the line.</p>\n</div></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--bar_compare\" data-block-id=\"b_6be95f6e\" data-type=\"bar_compare\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Compare</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">6 min</span></span>\n  </header>\n  <div class=\"block-body\"><div class=\"bars\"><div class=\"bar-row\">\n  <span class=\"bar-label\">One half</span>\n  <span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:50.00%\"></span></span>\n  <span class=\"bar-frac\">1/2</span>\n</div><div class=\"bar-row\">\n  <span class=\"bar-label\">One third</span>\n  <span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:33.33%\"></span></span>\n  <span class=\"bar-frac\">1/3</span>\n</div><div class=\"bar-row\">\n  <span class=\"bar-label\">One sixth</span>\n  <span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:16.67%\"></span></span>\n  <span class=\"bar-frac\">1/6</span>\n</div></div><p class=\"caption\">Compare quantities from the Fractions material as bars</p></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--sequence\" data-block-id=\"b_b3d0b1d0\" data-type=\"sequence\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Steps</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">7.2 min</span></span>\n  </header>\n  <div class=\"block-body\"><ol class=\"sequence\"><li class=\"seq-step\" tabindex=\"0\"><strong>Look</strong><span>Look closely at the Fractions example in front of you.</span></li><li class=\"seq-step\" tabindex=\"0\"><strong>Try</strong><span>The hands-on steps for Fractions described in the material</span></li><li class=\"seq-step\" tabindex=\"0\"><strong>Check</strong><span>Check your answer with your partner and say why.</span></li></ol></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--mcq\" data-block-id=\"b_803c8327\" data-type=\"mcq\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Check understanding</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">4.8 min</span></span>\n  </header>\n  <div class=\"block-body\"><p class=\"q\">Which statement about Fractions is correct?</p>\n<div class=\"mcq\" data-answer=\"1\">\n  <button type=\"button\" class=\"opt\" data-i=\"0\">The parts do not have to be equal</button><button type=\"button\" class=\"opt\" data-i=\"1\">The parts must all be equal</button><button type=\"button\" class=\"opt\" data-i=\"2\">Fractions only works with two parts</button><button type=\"button\" class=\"opt\" data-i=\"3\">Fractions has nothing to do with sharing</button>\n  <p class=\"mcq-explain\" hidden>One check-understanding question on the commonest Fractions mistake</p>\n</div></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--exit_ticket\" data-block-id=\"b_e8da0052\" data-type=\"exit_ticket\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Exit ticket</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">4.8 min</span></span>\n  </header>\n  <div class=\"block-body\"><ol class=\"exit\"><li>In one sentence, what is Fractions?</li><li>Two short exit questions on Fractions</li></ol></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article>\n<article class=\"block block--teacher_notes\" data-block-id=\"b_0d49c427\" data-type=\"teacher_notes\">\n  <header class=\"block-head\">\n    <span class=\"kind\">Teacher notes</span>\n    <span class=\"badges\"><span class=\"badge\" title=\"Complexity level\">C2</span><span class=\"badge badge--time\">0 min</span></span>\n  </header>\n  <div class=\"block-body\"><ul class=\"notes\"><li>Misconceptions and pacing notes for Fractions</li><li>Watch for learners who rush this part of Fractions.</li></ul></div>\n  <footer class=\"src\">Source: Teacher upload, fractions.txt</footer>\n</article></div>\n</section>",
+  "timeFit": {
+    "plannedMins": 42,
+    "ok": true,
+    "notice": "1 planned block(s) did not fit 45 min and were not generated. Nothing from your material was cut mid-block."
+  }
+}

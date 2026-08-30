@@ -1,0 +1,43 @@
+# SSE transcript for POST /generate {"stream":true}
+# one JSON object per "data:" line, events separated by a blank line
+
+data: {"step":"retrieving","materials":1}
+
+data: {"step":"planning"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":1,"n":8,"type":"hook"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":2,"n":8,"type":"explain"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":3,"n":8,"type":"number_line"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":4,"n":8,"type":"bar_compare"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":5,"n":8,"type":"sequence"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":6,"n":8,"type":"mcq"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":7,"n":8,"type":"exit_ticket"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"step":"block","i":8,"n":8,"type":"teacher_notes"}
+
+data: {"step":"provider","provider":"mock","model":"mock"}
+
+data: {"done":true,"lessonId":"lsn_3f37767a","timeFit":{"plannedMins":42,"ok":true,"notice":"1 planned block(s) did not fit 45 min and were not generated. Nothing from your material was cut mid-block."},"html":"<section class=\"lesson\">…</section>","lesson":"{…full lesson json…}"}
+

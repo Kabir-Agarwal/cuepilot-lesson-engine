@@ -1,0 +1,43 @@
+{
+  "MATERIAL_REQUIRED": {
+    "status": 400,
+    "body": {
+      "error": "a materialId is required — upload teacher material first",
+      "code": "MATERIAL_REQUIRED"
+    }
+  },
+  "MATERIAL_METADATA_REQUIRED": {
+    "status": 400,
+    "body": {
+      "error": "missing required field(s): teacherId, subject",
+      "code": "MATERIAL_METADATA_REQUIRED"
+    }
+  },
+  "MATERIAL_MISMATCH": {
+    "status": 400,
+    "body": {
+      "error": "materialIds[] must share the same teacherId and subject",
+      "code": "MATERIAL_MISMATCH"
+    }
+  },
+  "BAD_BLOCK_TYPE": {
+    "status": 400,
+    "body": {
+      "error": "unknown requestedBlocks: nonsense",
+      "code": "BAD_BLOCK_TYPE"
+    }
+  },
+  "BAD_PERMUTATION": {
+    "status": 400,
+    "body": {
+      "error": "blockIds must be a permutation of the lesson's existing block ids",
+      "code": "BAD_PERMUTATION"
+    }
+  },
+  "EDIT_BLOCK_NO_PARAM": {
+    "status": 400,
+    "body": {
+      "error": "editBlock needs at least one of instruction, complexity, visualDemand"
+    }
+  }
+}

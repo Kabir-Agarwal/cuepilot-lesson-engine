@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lesson Engine — reference client</title>
+<!--
+  REFERENCE CLIENT — the whole teacher journey in one plain-JS file.
+  Open it in any browser (even file://) on the same network as the backend.
+  1) Set BASE_URL below to the backend (localhost, or http://<its-LAN-IP>:3000 for another laptop).
+  2) Everything else is vanilla JS + fetch — lift any function into your framework.
+  The lesson stylesheet + interaction script are loaded from the backend so rendered HTML just works.
+-->
+<script>const BASE_URL = 'http://localhost:3000';</script>
+<link id="lessonCss" rel="stylesheet">
+<style>
+  :root{--ink:#1b1d21;--muted:#5f6672;--line:#e4e6eb;--paper:#fff;--wash:#f6f7f9;--accent:#3b5bdb;--radius:12px}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--wash);line-height:1.55}
+  .wrap{max-width:60rem;margin:0 auto;padding:1.25rem 1rem 5rem}
+  h1{font-size:1.4rem}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.1rem;margin:0 0 1rem}
+  .panel h2{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 .7rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.55rem}
+  label{display:block;font-size:.76rem;color:var(--muted);margin-bottom:.15rem}
+  input,select,textarea,button{font:inherit}
+  input,select,textarea{width:100%;padding:.42rem .5rem;border:1px solid var(--line);border-radius:8px;background:#fff}
+  textarea{min-height:2.8rem}
+  button{padding:.45rem .85rem;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer}
+  button.ghost{background:#fff;color:var(--accent)}
+  button:disabled{opacity:.5;cursor:progress}
+  .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.7rem}
+  .row>input,.row>textarea{flex:1;min-width:11rem}
+  #status{font-size:.85rem;color:var(--muted);min-height:1.2em}
+  #bar{height:12px;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--wash);margin-top:.5rem}
+  #barFill{height:100%;width:0;background:var(--accent);transition:width .2s}
+  .editbar{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.7rem;padding-top:.6rem;border-top:1px dashed var(--line)}
+  .editbar input[type=text]{flex:1;min-width:9rem}
+  .editbar input[type=range]{width:6.5rem}
+  .block.flash{animation:flash 1.1s ease-out}
+  @keyframes flash{from{box-shadow:0 0 0 3px #e8edfd}to{box-shadow:none}}
+  .lib{display:grid;gap:.3rem}
+  .lib-item{display:flex;justify-content:space-between;gap:.5rem;font-size:.9rem;border-bottom:1px solid var(--line);padding:.3rem 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Lesson Engine — reference client</h1>
+  <p id="status">Set <code>BASE_URL</code> at the top of this file, then upload a material.</p>
+
+  <!-- (a) UPLOAD + (b) MATERIALS -->
+  <div class="panel">
+    <h2>1 · Upload material (mandatory)</h2>
+    <div class="grid">
+      <div><label>Teacher id</label><input id="teacherId" value="demo-teacher"></div>
+      <div><label>Subject</label><input id="subject" value="Mathematics"></div>
+      <div><label>Board</label><input id="board" value="CBSE"></div>
+      <div><label>Grade</label><input id="grade" value="4"></div>
+    </div>
+    <div class="row"><input type="file" id="file" accept=".txt,.md,.pdf"><button id="upload">Upload</button><small id="matInfo"></small></div>
+    <div class="row"><div style="flex:1"><label>Materials (pick one to build from)</label><select id="materials"><option value="">— none —</option></select></div></div>
+  </div>
+
+  <!-- (c) LESSON SETUP + (d) GENERATE -->
+  <div class="panel">
+    <h2>2 · Lesson setup</h2>
+    <div class="grid">
+      <div><label>Topic</label><input id="topic" value="Fractions"></div>
+      <div><label>nLessons</label><input id="nLessons" type="number" min="1" value="3"></div>
+      <div><label>lessonIndex</label><input id="lessonIndex" type="number" min="1" value="1"></div>
+      <div><label>durationMins</label><input id="durationMins" type="number" min="5" value="45"></div>
+      <div><label>Complexity 1-5 (language)</label><input id="defaultComplexity" type="number" min="1" max="5" value="2"></div>
+      <div><label>Visual 1-5 (density)</label><input id="visualDemand" type="number" min="1" max="5" value="3"></div>
+    </div>
+    <div class="row"><textarea id="instructions" placeholder="free-text instructions"></textarea></div>
+    <div class="row"><input id="requestedBlocks" type="text" placeholder="optional block types, comma-separated (hook, explain, mcq, exit_ticket)"></div>
+    <div class="row">
+      <button id="generate" disabled>Generate</button>
+      <label style="margin:0"><input type="checkbox" id="stream" checked> stream</label>
+    </div>
+    <div id="bar" hidden><div id="barFill"></div></div>
+  </div>
+
+  <!-- (g) LESSON-LEVEL EDIT + view modes + duplicate -->
+  <div class="panel">
+    <h2>3 · Lesson-level edit & views</h2>
+    <div class="row"><input id="lessonInstruction" type="text" placeholder="add an assessment at the end / remove blocks 5 and 6 / make suitable for Grade 4"><button id="editLesson" class="ghost">Apply</button></div>
+    <div class="row">
+      <button class="ghost" id="viewDoc">Open document ↗</button>
+      <button class="ghost" id="viewSlides">Slideshow ↗</button>
+      <button class="ghost" id="viewAnim">Animated ↗</button>
+      <button class="ghost" id="duplicate">Duplicate</button>
+    </div>
+  </div>
+
+  <!-- (e) LESSON VIEW (rendered html goes here; per-block controls added by JS) -->
+  <div id="lessonHost"></div>
+
+  <!-- (i) LIBRARY + (j) PREFS -->
+  <div class="panel"><h2>4 · Library</h2><div class="lib" id="library"></div></div>
+  <div class="panel">
+    <h2>5 · Prefs</h2>
+    <div class="row">
+      <button class="ghost" id="loadPrefs">Load</button>
+      <label style="margin:0">complexity <input id="pComplexity" type="number" min="1" max="5" style="width:4rem" value="3"></label>
+      <label style="margin:0">visual <input id="pVisual" type="number" min="1" max="5" style="width:4rem" value="3"></label>
+      <button class="ghost" id="savePrefs">Save prefs</button>
+    </div>
+  </div>
+</div>
+
+<script src="" id="lessonJs"></script>
+<script>
+// ---- load the backend's stylesheet + interaction script so rendered HTML works ----
+document.getElementById('lessonCss').href = BASE_URL + '/lesson.css';
+document.getElementById('lessonJs').src = BASE_URL + '/lesson.js';
+
+const $ = id => document.getElementById(id);
+let materialId = null, lesson = null;
+const say = (m, busy) => { $('status').textContent = m; document.querySelectorAll('button').forEach(b => b.disabled = !!busy); if (!busy) $('generate').disabled = !materialId; };
+
+// Generic JSON call with error surfacing (§k error table).
+async function api(path, opts) {
+  const res = await fetch(BASE_URL + path, opts);
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((j.code ? j.code + ': ' : '') + (j.error || res.statusText));
+  return j;
+}
+
+// ---- (a) upload ----
+$('upload').onclick = async () => {
+  if (!$('file').files[0]) return say('Pick a file.');
+  const fd = new FormData();
+  fd.append('file', $('file').files[0]);
+  ['teacherId','subject','board','grade'].forEach(k => fd.append(k, $(k).value));
+  say('Uploading…', true);
+  try {
+    const j = await api('/ingest', { method: 'POST', body: fd });
+    materialId = j.materialId;
+    $('matInfo').textContent = `${j.name} · ${j.chunks} chunks`;
+    await loadMaterials(); $('materials').value = materialId;
+    say('Uploaded. Generate now.');
+  } catch (e) { say('Upload failed — ' + e.message); }
+};
+
+// ---- (b) materials ----
+async function loadMaterials() {
+  const j = await api('/materials?teacherId=' + encodeURIComponent($('teacherId').value));
+  $('materials').innerHTML = '<option value="">— none —</option>' +
+    j.materials.map(m => `<option value="${m.id}">${m.filename} · ${m.subject} · grade ${m.grade}</option>`).join('');
+  if (materialId) $('materials').value = materialId;
+}
+$('materials').onchange = () => { materialId = $('materials').value || null; say(materialId ? 'Material selected.' : 'No material.'); };
+
+// ---- (c) build the spec ----
+function buildSpec() {
+  const spec = { board: $('board').value, grade: $('grade').value, subject: $('subject').value };
+  ['topic','nLessons','lessonIndex','durationMins','defaultComplexity','visualDemand','instructions'].forEach(k => spec[k] = $(k).value);
+  const rb = $('requestedBlocks').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (rb.length) spec.requestedBlocks = rb;
+  return spec;
+}
+
+// ---- (d) generate, with SSE progress (POST SSE -> read the fetch body stream) ----
+function progress(pct, label) { $('bar').hidden = false; if (pct != null) $('barFill').style.width = pct + '%'; if (label) say(label, true); }
+async function streamPost(path, body, onEvent) {
+  const res = await fetch(BASE_URL + path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+      const line = buf.slice(0, i).split('\n').find(l => l.startsWith('data:')); buf = buf.slice(i + 2);
+      if (line) onEvent(JSON.parse(line.slice(5).trim()));
+    }
+  }
+}
+$('generate').onclick = async () => {
+  if (!materialId) return say('Upload/select a material first.');
+  const body = { materialId, teacherId: $('teacherId').value, spec: buildSpec() };
+  say('Generating…', true);
+  try {
+    if ($('stream').checked) {
+      progress(3, 'starting…');
+      await streamPost('/generate', { ...body, stream: true }, ev => {
+        if (ev.step === 'retrieving') progress(8, 'retrieving material…');
+        else if (ev.step === 'planning') progress(18, 'planning…');
+        else if (ev.step === 'provider') say('answered by: ' + ev.model, true);
+        else if (ev.step === 'block') progress(20 + Math.round(ev.i / ev.n * 65), `block ${ev.i}/${ev.n} — ${ev.type}`);
+        else if (ev.step === 'rendering') progress(96, 'rendering…');
+        else if (ev.done) { lesson = ev.lesson; render(ev.html); progress(100, `Ready · ${ev.timeFit.plannedMins} min` + (ev.timeFit.ok ? '' : ' · OVER')); }
+        else if (ev.error) say('Failed — ' + ev.error);
+      });
+    } else {
+      const j = await api('/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      lesson = j.lesson; render(j.html); say(`Ready · ${j.timeFit.plannedMins} min` + (j.timeFit.ok ? '' : ' · OVER'));
+    }
+    loadLibrary();
+  } catch (e) { say('Generate failed — ' + e.message); }
+  setTimeout(() => { $('bar').hidden = true; }, 1000);
+  say($('status').textContent);
+};
+
+// ---- (e) render + (f) per-block controls ----
+function render(html) { $('lessonHost').innerHTML = html; document.querySelectorAll('#lessonHost .block').forEach(addControls); }
+
+function addControls(el) {
+  const id = el.dataset.blockId;
+  const bar = document.createElement('div');
+  bar.className = 'editbar';
+  bar.innerHTML = `<input type="text" placeholder="edit this block…" data-r="prompt">
+    <label style="margin:0">C<input type="range" min="1" max="5" value="${(el.querySelector('.badge')?.textContent||'C3').replace('C','')}" data-r="c"></label>
+    <label style="margin:0">V<input type="range" min="1" max="5" value="3" data-r="v"></label>
+    <button class="ghost" data-r="go">Edit</button>
+    <button class="ghost" data-r="up">↑</button><button class="ghost" data-r="down">↓</button>`;
+  el.appendChild(bar);
+  bar.querySelector('[data-r=go]').onclick = async () => {
+    const instruction = bar.querySelector('[data-r=prompt]').value.trim();
+    say('Editing block…', true);
+    try {
+      const j = await api('/edit-block', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ lessonId: lesson.id, blockId: id, instruction: instruction || undefined,
+          complexity: Number(bar.querySelector('[data-r=c]').value), visualDemand: Number(bar.querySelector('[data-r=v]').value) }) });
+      const tmp = document.createElement('div'); tmp.innerHTML = j.blockHtml;
+      const fresh = tmp.firstElementChild; el.replaceWith(fresh); addControls(fresh); fresh.classList.add('flash');
+      say(`Block updated · ${j.timeFit.plannedMins} min` + (j.timeFit.ok ? '' : ' · OVER'));
+    } catch (e) { say('Block edit failed — ' + e.message); }
+  };
+  // (h) drag-drop is up to you; here ↑/↓ demonstrate the reorder save.
+  const move = async dir => {
+    const ids = [...document.querySelectorAll('#lessonHost .block')].map(b => b.dataset.blockId);
+    const i = ids.indexOf(id), j = i + dir; if (j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    try { const r = await api(`/lessons/${lesson.id}/reorder`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ blockIds: ids }) });
+      lesson = r.lesson; render(r.html); say('Reordered.'); } catch (e) { say('Reorder failed — ' + e.message); }
+  };
+  bar.querySelector('[data-r=up]').onclick = () => move(-1);
+  bar.querySelector('[data-r=down]').onclick = () => move(1);
+}
+
+// ---- (g) lesson-level edit ----
+$('editLesson').onclick = async () => {
+  if (!lesson) return say('Generate first.');
+  const instruction = $('lessonInstruction').value.trim(); if (!instruction) return say('Type an instruction.');
+  say('Applying…', true);
+  try {
+    const j = await api('/edit-lesson', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ lessonId: lesson.id, instruction }) });
+    lesson = j.lesson; render(j.html);
+    j.changedBlockIds.forEach(bid => document.querySelector(`[data-block-id="${bid}"]`)?.classList.add('flash'));
+    say(j.note || `${j.changedBlockIds.length} block(s) changed, rest untouched.`);
+  } catch (e) { say('Edit failed — ' + e.message); }
+};
+
+// view modes + duplicate
+$('viewDoc').onclick   = () => lesson && open(`${BASE_URL}/lessons/${lesson.id}?mode=document`, '_blank');
+$('viewSlides').onclick= () => lesson && open(`${BASE_URL}/lessons/${lesson.id}?mode=slideshow`, '_blank');
+$('viewAnim').onclick  = () => lesson && open(`${BASE_URL}/lessons/${lesson.id}?mode=animated`, '_blank');
+$('duplicate').onclick = async () => { if (!lesson) return; const j = await api(`/lessons/${lesson.id}/duplicate`, { method: 'POST' }); say('Duplicated ' + j.lesson.id); loadLibrary(); };
+
+// ---- (i) library ----
+async function loadLibrary() {
+  const j = await api('/lessons');
+  $('library').innerHTML = j.lessons.map(l => `<div class="lib-item"><span>${l.title} — grade ${l.grade}, ${l.blocks} blocks</span>
+    <span><button class="ghost" data-open="${l.id}">Reopen</button> <button class="ghost" data-dup="${l.id}">Dup</button></span></div>`).join('') || '<small>none yet</small>';
+  $('library').querySelectorAll('[data-open]').forEach(b => b.onclick = async () => { const r = await api('/lessons/' + b.dataset.open); lesson = r.lesson; render(r.html); say('Reopened ' + lesson.id); });
+  $('library').querySelectorAll('[data-dup]').forEach(b => b.onclick = async () => { await api(`/lessons/${b.dataset.dup}/duplicate`, { method: 'POST' }); loadLibrary(); });
+}
+
+// ---- (j) prefs ----
+$('loadPrefs').onclick = async () => { const j = await api('/prefs/' + $('teacherId').value); $('pComplexity').value = j.prefs.defaultComplexity; $('pVisual').value = j.prefs.defaultVisualDemand; say('Prefs loaded.'); };
+$('savePrefs').onclick = async () => { await api('/prefs/' + $('teacherId').value, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ defaultComplexity: Number($('pComplexity').value), defaultVisualDemand: Number($('pVisual').value) }) }); say('Prefs saved.'); };
+
+// boot
+loadMaterials().catch(() => say('Cannot reach backend at ' + BASE_URL + ' — is it running? Is BASE_URL correct?'));
+loadLibrary().catch(() => {});
+</script>
+</body>
+</html>

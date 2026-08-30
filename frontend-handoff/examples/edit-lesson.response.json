@@ -1,0 +1,20 @@
+{
+  "changedBlockIds": [
+    "b_22b2035c"
+  ],
+  "ops": [
+    {
+      "op": "add",
+      "afterBlockId": null,
+      "position": "end",
+      "type": "mcq",
+      "intent": "add an assessment at the end"
+    }
+  ],
+  "timeFit": {
+    "plannedMins": 46.8,
+    "ok": true
+  },
+  "html": "<section class=\"lesson\">…</section>",
+  "lesson": "{…full lesson json…}"
+}

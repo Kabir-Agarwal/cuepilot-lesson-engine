@@ -1,0 +1,15 @@
+{
+  "materials": [
+    {
+      "id": "mat_17a2096b",
+      "materialId": "mat_17a2096b",
+      "teacherId": "demo-teacher",
+      "subject": "Mathematics",
+      "board": "CBSE",
+      "grade": "4",
+      "filename": "fractions.txt",
+      "uploadedAt": "2026-08-30T00:00:00.000Z",
+      "chunks": 3
+    }
+  ]
+}

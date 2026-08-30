@@ -23,6 +23,28 @@ test('POST /generate without materialId -> 400 MATERIAL_REQUIRED', async () => {
   assert.equal(r.json.code, 'MATERIAL_REQUIRED');
 });
 
+test('CORS: preflight OPTIONS returns 204 with allow-origin/methods/headers', async () => {
+  const res = await fetch(base + '/generate', {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'http://other-laptop.local:5173',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert.equal(res.status, 204);
+  assert.equal(res.headers.get('access-control-allow-origin'), 'http://other-laptop.local:5173');
+  assert.match(res.headers.get('access-control-allow-methods'), /POST/);
+  assert.match(res.headers.get('access-control-allow-headers').toLowerCase(), /content-type/);
+});
+
+test('CORS: an actual cross-origin GET carries the allow-origin header', async () => {
+  const res = await fetch(base + '/lessons', { headers: { origin: 'http://other-laptop.local:5173' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('access-control-allow-origin'), 'http://other-laptop.local:5173');
+  assert.match(res.headers.get('vary') || '', /Origin/);
+});
+
 test('POST /ingest without subject/teacherId -> 400', async () => {
   const fd = new FormData();
   fd.append('file', new Blob(['some fractions text about equal parts'], { type: 'text/plain' }), 'm.txt');

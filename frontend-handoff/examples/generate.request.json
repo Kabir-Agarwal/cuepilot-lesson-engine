@@ -1,0 +1,16 @@
+{
+  "materialId": "mat_17a2096b",
+  "teacherId": "demo-teacher",
+  "spec": {
+    "board": "CBSE",
+    "grade": "4",
+    "subject": "Mathematics",
+    "topic": "Fractions",
+    "nLessons": 3,
+    "lessonIndex": 1,
+    "durationMins": 45,
+    "defaultComplexity": 2,
+    "visualDemand": 3,
+    "instructions": "use roti and paper-folding examples"
+  }
+}

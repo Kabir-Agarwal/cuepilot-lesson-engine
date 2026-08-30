@@ -15,8 +15,22 @@ import { withProgress } from './src/progress.js';
 import { verifyEnabled } from './src/verifier.js';
 
 const app = express();
+
+// CORS: allow any origin/header/method so a frontend on another origin or laptop can call
+// every endpoint (including the SSE streams). ponytail: 6 lines cover it — no `cors` dep.
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', req.headers['access-control-request-headers'] || 'Content-Type, Authorization');
+  res.header('Access-Control-Max-Age', '86400');
+  res.header('Vary', 'Origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);   // preflight
+  next();
+});
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static('demo'));
+app.use('/handoff', express.static('frontend-handoff'));   // FE can open the reference client here too
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 const wrap = fn => (req, res) => fn(req, res).catch(e => {
@@ -144,8 +158,11 @@ app.get('/lessons', (_req, res) => res.json({
 app.get('/lessons/:id', (req, res) => {
   const lesson = load('lessons', req.params.id);
   if (!lesson) return res.status(404).json({ error: 'lesson not found' });
-  if (req.query.format === 'html') return res.type('html').send(renderLesson(lesson));
-  if (req.query.format === 'slides') return res.type('html').send(renderSlides(lesson));  // stretch S1/S2
+  // `mode` is the documented param; `format` kept as a back-compat alias.
+  const mode = req.query.mode || { html: 'document', slides: 'slideshow' }[req.query.format];
+  if (mode === 'document') return res.type('html').send(renderLesson(lesson));
+  if (mode === 'slideshow') return res.type('html').send(renderSlides(lesson));
+  if (mode === 'animated') return res.type('html').send(renderSlides(lesson, { autoplay: true }));
   res.json({ lesson, html: renderLessonBody(lesson), timeFit: lesson.timeFit });
 });
 

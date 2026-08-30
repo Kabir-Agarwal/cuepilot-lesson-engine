@@ -1,0 +1,235 @@
+{
+  "id": "lsn_3f37767a",
+  "title": "Fractions: Lesson 1 of 3",
+  "board": "CBSE",
+  "grade": "4",
+  "subject": "Mathematics",
+  "topic": "Fractions",
+  "nLessons": 3,
+  "lessonIndex": 1,
+  "durationMins": 45,
+  "defaultComplexity": 2,
+  "visualDemand": 3,
+  "instructions": "use roti and paper-folding examples",
+  "teacherId": "demo-teacher",
+  "materialId": "mat_17a2096b",
+  "materialIds": [
+    "mat_17a2096b"
+  ],
+  "timeFit": {
+    "plannedMins": 42,
+    "ok": true,
+    "notice": "1 planned block(s) did not fit 45 min and were not generated. Nothing from your material was cut mid-block."
+  },
+  "blocks": [
+    {
+      "id": "b_bae7cfde",
+      "type": "hook",
+      "data": {
+        "text": "Think about Fractions in your own day (level 2). A real-life opening question about Fractions for grade 4"
+      },
+      "complexity": 2,
+      "estMinutes": 3.6,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "A real-life opening question about Fractions for grade 4"
+    },
+    {
+      "id": "b_a8b7b9d5",
+      "type": "explain",
+      "data": {
+        "heading": "Understanding Fractions",
+        "paragraphs": [
+          "Explain the core idea of Fractions using the teacher's own examples",
+          "We build the idea of Fractions step by step, using the examples from your own material."
+        ]
+      },
+      "complexity": 2,
+      "estMinutes": 9.6,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "Explain the core idea of Fractions using the teacher's own examples"
+    },
+    {
+      "id": "b_380907a2",
+      "type": "number_line",
+      "data": {
+        "min": 0,
+        "max": 1,
+        "step": 0.25,
+        "marks": [
+          {
+            "value": 0,
+            "label": "0"
+          },
+          {
+            "value": 0.25,
+            "label": "1/4"
+          },
+          {
+            "value": 0.5,
+            "label": "2/4"
+          },
+          {
+            "value": 0.75,
+            "label": "3/4"
+          },
+          {
+            "value": 1,
+            "label": "1"
+          }
+        ],
+        "question": "Tap each mark. Place Fractions values on a number line from the material"
+      },
+      "complexity": 2,
+      "estMinutes": 6,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "Place Fractions values on a number line from the material"
+    },
+    {
+      "id": "b_6be95f6e",
+      "type": "bar_compare",
+      "data": {
+        "items": [
+          {
+            "label": "One half",
+            "numerator": 1,
+            "denominator": 2
+          },
+          {
+            "label": "One third",
+            "numerator": 1,
+            "denominator": 3
+          },
+          {
+            "label": "One sixth",
+            "numerator": 1,
+            "denominator": 6
+          }
+        ],
+        "caption": "Compare quantities from the Fractions material as bars"
+      },
+      "complexity": 2,
+      "estMinutes": 6,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "Compare quantities from the Fractions material as bars"
+    },
+    {
+      "id": "b_b3d0b1d0",
+      "type": "sequence",
+      "data": {
+        "steps": [
+          {
+            "title": "Look",
+            "text": "Look closely at the Fractions example in front of you."
+          },
+          {
+            "title": "Try",
+            "text": "The hands-on steps for Fractions described in the material"
+          },
+          {
+            "title": "Check",
+            "text": "Check your answer with your partner and say why."
+          }
+        ]
+      },
+      "complexity": 2,
+      "estMinutes": 7.2,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "The hands-on steps for Fractions described in the material"
+    },
+    {
+      "id": "b_803c8327",
+      "type": "mcq",
+      "data": {
+        "question": "Which statement about Fractions is correct?",
+        "options": [
+          "The parts do not have to be equal",
+          "The parts must all be equal",
+          "Fractions only works with two parts",
+          "Fractions has nothing to do with sharing"
+        ],
+        "answerIndex": 1,
+        "explanation": "One check-understanding question on the commonest Fractions mistake"
+      },
+      "complexity": 2,
+      "estMinutes": 4.8,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "One check-understanding question on the commonest Fractions mistake"
+    },
+    {
+      "id": "b_e8da0052",
+      "type": "exit_ticket",
+      "data": {
+        "questions": [
+          "In one sentence, what is Fractions?",
+          "Two short exit questions on Fractions"
+        ]
+      },
+      "complexity": 2,
+      "estMinutes": 4.8,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "Two short exit questions on Fractions"
+    },
+    {
+      "id": "b_0d49c427",
+      "type": "teacher_notes",
+      "data": {
+        "points": [
+          "Misconceptions and pacing notes for Fractions",
+          "Watch for learners who rush this part of Fractions."
+        ]
+      },
+      "complexity": 2,
+      "estMinutes": 0,
+      "sourceRefs": [
+        {
+          "sourceId": "mat_17a2096b",
+          "sourceName": "fractions.txt",
+          "attribution": "Teacher upload, fractions.txt"
+        }
+      ],
+      "narration": "Misconceptions and pacing notes for Fractions"
+    }
+  ]
+}
