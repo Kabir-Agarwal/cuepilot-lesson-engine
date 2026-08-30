@@ -180,6 +180,17 @@ For a per-block edit, replace only that block's node using `blockHtml` (match `[
 Set `LLM_PROVIDER=mock` (or just leave keys empty). Every endpoint returns valid, deterministic content
 with no network — safe for the demo if the internet or a key dies mid-presentation.
 
+## Hosting & persistence (read this for the deployed backend)
+
+- **Health:** `GET /health` → `{ ok, provider, modelChainLength, ... }` — use for platform health checks.
+- **CORS:** open to all origins/headers/methods (preflight handled), so a Vercel/other-origin frontend
+  can call every endpoint, SSE included.
+- **Ephemeral disk on Render free:** the backend's `./data` (saved lessons, materials, prefs) is **wiped
+  on restart / spin-down**. On the hosted instance, treat saves as **best-effort / demo-scoped** — a
+  reopened lesson may be gone after the service sleeps. For durable saves, run the backend locally or on a
+  host with a persistent disk. The frontend should surface hosted saves as temporary and not depend on
+  `GET /lessons` still returning them later.
+
 ## Architecture
 
 ```

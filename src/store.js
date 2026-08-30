@@ -19,3 +19,7 @@ export function load(kind, id) {
 export const list = kind => fs.readdirSync(dir(kind))
   .filter(f => f.endsWith('.json'))
   .map(f => JSON.parse(fs.readFileSync(path.join(dir(kind), f), 'utf8')));
+
+// Recreate the data dirs on boot so a fresh (e.g. Render, ephemeral-disk) instance never
+// starts missing them. dir() already mkdirs lazily; this just makes it explicit and eager.
+export const ensureStore = () => ['materials', 'lessons', 'teachers'].forEach(dir);

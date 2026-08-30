@@ -1,0 +1,18 @@
+# Render Blueprint — deploys the Lesson Engine backend as a free web service.
+# Secrets are declared by NAME ONLY (sync:false) — paste the values in the Render dashboard,
+# never in this file or the repo. With the keys blank the app still runs in mock mode.
+services:
+  - type: web
+    name: cuepilot-lesson-engine
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: LLM_PROVIDER
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ALCHEMYST_AI_API_KEY
+        sync: false

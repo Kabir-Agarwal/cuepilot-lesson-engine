@@ -5,7 +5,7 @@ import multer from 'multer';
 import { extractText } from './src/pdf.js';
 import { ingest, ragStatus } from './src/rag.js';
 import { newId } from './src/schema.js';
-import { save, load, list } from './src/store.js';
+import { save, load, list, ensureStore } from './src/store.js';
 import { getPrefs, putPrefs } from './src/prefs.js';
 import { generateLesson, editBlock, editLesson, duplicateLesson, roadmap, reorderBlocks } from './src/engine.js';
 import { renderLesson, renderLessonBody, renderBlock, STYLES, SCRIPT } from './src/render/index.js';
@@ -42,8 +42,10 @@ const wrap = fn => (req, res) => fn(req, res).catch(e => {
 app.get('/lesson.css', (_req, res) => res.type('css').send(STYLES));
 app.get('/lesson.js', (_req, res) => res.type('js').send(SCRIPT));
 
+// Platform health check — fast, no I/O. modelChainLength is 0 until first use / warmup.
 app.get('/health', (_req, res) =>
-  res.json({ ok: true, provider: provider(), modelChain: getModelChain(), verify: verifyEnabled(), llm: stats, rag: ragStatus }));
+  res.json({ ok: true, provider: provider(), modelChainLength: (getModelChain() || []).length,
+    modelChain: getModelChain(), verify: verifyEnabled(), llm: stats, rag: ragStatus }));
 
 app.post('/ingest', upload.single('file'), wrap(async (req, res) => {
   if (!req.file) throw Object.assign(new Error('no file uploaded (field name: file)'), { status: 400 });
@@ -179,9 +181,12 @@ export { app };
 
 // Only bind a port when run directly (node server.js), so tests can import the app.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  ensureStore();                        // recreate ./data dirs on boot (ephemeral-disk safe)
   const port = process.env.PORT || 3000;
-  app.listen(port, () => {
-    console.log(`Lesson engine on http://localhost:${port} (provider: ${provider()}, verify: ${verifyEnabled() ? 'on' : 'off'})`);
+  // Bind 0.0.0.0 so hosted platforms (Render) and other-laptop access reach it.
+  const server = app.listen(port, '0.0.0.0', () => {
+    const bound = server.address().port;
+    console.log(`Lesson engine listening on 0.0.0.0:${bound} (provider: ${provider()}, verify: ${verifyEnabled() ? 'on' : 'off'})`);
     if (provider() === 'gemini') resolveModelChain().catch(() => {});   // warm the model chain
   });
 }

@@ -62,6 +62,18 @@ JSON — deterministic, XSS-safe renderers turn it into HTML.
 - **S3 roadmap** — `POST /roadmap` → an ordered multi-lesson plan
 - **S4 NCERT seed** — `npm run seed` ingests one chapter as `curriculum_authority`
 
+## Deploy (Render)
+
+`render.yaml` at the repo root deploys this as a free Render web service (`npm install` / `npm start`,
+health check `/health`, binds `0.0.0.0:$PORT`). API keys are declared by **name only** (`sync:false`) —
+paste them in the Render dashboard, never in the repo; blank keys just run mock mode.
+
+**Ephemeral disk:** on Render's free tier the container's `./data` is **wiped on every restart / spin-down**,
+so lessons/materials saved on the hosted instance are **demo-scoped and best-effort** — treat them as
+throwaway. Run locally (or on a host with a persistent disk) for durable saves. The frontend should not
+assume a hosted save survives a restart. A fresh instance recreates the empty `./data` dirs on boot, so it
+never crashes on missing data.
+
 ## Layout
 
 ```
