@@ -35,10 +35,16 @@ test('generate: mock provider produces a valid, deterministic, cited lesson', as
   assert.equal(strip(a), strip(b));
 });
 
-test('generate: without a materialId is refused with 400 MATERIAL_REQUIRED', async () => {
-  await assert.rejects(
-    () => generateLesson(SPEC, undefined, 'default'),
-    e => e.status === 400 && e.code === 'MATERIAL_REQUIRED');
+test('generate: with no material generates ungrounded (model knowledge), no citations', async () => {
+  const lesson = await generateLesson(SPEC, undefined, 'default');
+  assert.ok(lesson.blocks.length > 0, 'a lesson is still produced without any upload');
+  assert.equal(lesson.materialId, null, 'no material is attributed');
+  assert.deepEqual(lesson.materialIds, [], 'materialIds is empty');
+  // Ungrounded means no citations leaked in from any other material.
+  for (const b of lesson.blocks) assert.deepEqual(b.sourceRefs, [], `block ${b.id} has no sourceRefs`);
+});
+
+test('generate: a NAMED but missing material is still refused with 400 MATERIAL_REQUIRED', async () => {
   await assert.rejects(
     () => generateLesson(SPEC, 'mat_ghost', 'default'),
     e => e.status === 400 && e.code === 'MATERIAL_REQUIRED');

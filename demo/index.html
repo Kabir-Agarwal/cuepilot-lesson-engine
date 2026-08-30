@@ -109,7 +109,7 @@ const $ = id => document.getElementById(id);
 const say = (m, busy) => {
   $('status').textContent = m;
   document.querySelectorAll('button').forEach(b => b.disabled = !!busy);
-  if (!busy) $('generate').disabled = !materialId;   // stays locked until a material is chosen
+  // Generate is always available: material is optional (ungrounded generation allowed).
 };
 
 async function api(url, opts) {
@@ -119,7 +119,7 @@ async function api(url, opts) {
   return j;
 }
 
-function gateGenerate() { $('generate').disabled = !materialId; }
+function gateGenerate() { $('generate').disabled = false; }  // material optional
 
 $('upload').onclick = async () => {
   if (!$('file').files[0]) return say('Pick a .txt, .md or .pdf first.');
@@ -182,7 +182,7 @@ function buildSpec() {
 }
 
 $('generate').onclick = async () => {
-  if (!materialId) return say('Upload or select a material first — generation needs one.');
+  if (!materialId) say('No material selected — generating from the model\u2019s own knowledge (no citations).');
   const spec = buildSpec();
   const teacherId = $('teacherId').value;
   say('Generating…', true);
