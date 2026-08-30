@@ -2,6 +2,7 @@
 export const BASE_MINUTES = {
   hook: 3, explain: 8, number_line: 5, bar_compare: 5, sequence: 6,
   mcq: 4, activity: 12, exit_ticket: 4, teacher_notes: 0,
+  flowchart: 5, pro_tip: 2, match_game: 6,
 };
 
 export function gradeFactor(grade) {

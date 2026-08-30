@@ -13,6 +13,7 @@ import { renderSlides } from './src/render/slides.js';
 import { provider, stats, resolveModelChain, getModelChain } from './src/llm.js';
 import { withProgress } from './src/progress.js';
 import { verifyEnabled } from './src/verifier.js';
+import { toUiModule } from './src/ui_adapter.js';
 
 const app = express();
 
@@ -177,12 +178,50 @@ app.post('/roadmap', wrap(async (req, res) => {
 app.get('/prefs/:teacherId', (req, res) => res.json({ prefs: getPrefs(req.params.teacherId) }));
 app.put('/prefs/:teacherId', (req, res) => res.json({ prefs: putPrefs(req.params.teacherId, req.body || {}) }));
 
+/* -------- /v1/* : the frontend's UI JSON contract (adapter over the engine) -------- */
+// Same engine, same store — these routes just re-shape lessons via toUiModule.
+
+app.post('/v1/runs', wrap(async (req, res) => {
+  const { materialId, materialIds, teacherId = 'default', spec } = req.body || {};
+  const lesson = await generateLesson(spec, materialId, teacherId, materialIds);
+  res.json({ module: toUiModule(lesson), lessonId: lesson.id });
+}));
+
+app.get('/v1/lessons/:id', (req, res) => {
+  const lesson = load('lessons', req.params.id);
+  if (!lesson) return res.status(404).json({ error: 'lesson not found' });
+  res.json({ module: toUiModule(lesson) });
+});
+
+app.get('/v1/lessons', (_req, res) => res.json({
+  lessons: list('lessons')
+    .map(l => ({ id: l.id, title: l.title, grade: l.grade, subject: l.subject, topic: l.topic, blocks: l.blocks.length, durationMins: l.durationMins }))
+}));
+
+app.post('/v1/lessons/:id/reorder', wrap(async (req, res) => {
+  const lesson = reorderBlocks(req.params.id, req.body?.blockIds);
+  res.json({ module: toUiModule(lesson) });
+}));
+
+app.post('/v1/edit-block', wrap(async (req, res) => {
+  const { lessonId, blockId, instruction, complexity, visualDemand } = req.body || {};
+  await editBlock(lessonId, blockId, { instruction, complexity, visualDemand });
+  const lesson = load('lessons', lessonId);
+  res.json({ module: toUiModule(lesson), changedBlockIds: [blockId] });
+}));
+
+app.post('/v1/edit-lesson', wrap(async (req, res) => {
+  const { lessonId, instruction } = req.body || {};
+  const out = await editLesson(lessonId, instruction);
+  res.json({ module: toUiModule(out.lesson), changedBlockIds: out.changedBlockIds, note: out.note });
+}));
+
 export { app };
 
 // Only bind a port when run directly (node server.js), so tests can import the app.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   ensureStore();                        // recreate ./data dirs on boot (ephemeral-disk safe)
-  const port = process.env.PORT || 3000;
+  const port = process.env.PORT || 3001;   // 3001 matches the frontend's default ENGINE_URL + .env.example
   // Bind 0.0.0.0 so hosted platforms (Render) and other-laptop access reach it.
   const server = app.listen(port, '0.0.0.0', () => {
     const bound = server.address().port;

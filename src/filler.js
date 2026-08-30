@@ -1,4 +1,4 @@
-import { completeJSON } from './llm.js';
+import { completeJSON, provider } from './llm.js';
 import { validateBlock, makeBlock } from './schema.js';
 import { complexityDirective, clampComplexity } from './complexity.js';
 import { visualDirective } from './visual.js';
@@ -16,7 +16,12 @@ const SHAPES = {
   activity: '{"title": string, "materials": string[], "instructions": string[]}',
   exit_ticket: '{"questions": string[]}',
   teacher_notes: '{"points": string[]}',
+  flowchart: '{"title": string, "nodes": [{"type": "start|process|decision|end", "text": string, "yes": string (only on a decision), "no": string (only on a decision)}]}',
+  pro_tip: '{"label": string, "tips": string[]}',
+  match_game: '{"prompt": string, "pairs": [{"left": string, "right": string}]}',
 };
+
+const CLEAN = s => String(s ?? '').replace(/\s+/g, ' ').trim();
 
 // Canned, valid, deterministic mock bodies — demo insurance with no network.
 function mockData(type, intent, spec, complexity) {
@@ -61,17 +66,7 @@ function mockData(type, intent, spec, complexity) {
         ],
       };
     case 'mcq':
-      return {
-        question: `Which statement about ${t} is correct?`,
-        options: [
-          `The parts do not have to be equal`,
-          `The parts must all be equal`,
-          `${t} only works with two parts`,
-          `${t} has nothing to do with sharing`,
-        ],
-        answerIndex: 1,
-        explanation: `${intent}`,
-      };
+      return assembleMcq(mockMcq(spec, intent), spec.topic);
     case 'activity':
       return {
         title: `Hands-on with ${t}`,
@@ -86,9 +81,179 @@ function mockData(type, intent, spec, complexity) {
       return { questions: [`In one sentence, what is ${t}?`, `${intent}`] };
     case 'teacher_notes':
       return { points: [`${intent}`, `Watch for learners who rush this part of ${t}.`] };
+    case 'flowchart':
+      return {
+        title: `How to work with ${t}`,
+        nodes: [
+          { type: 'start', text: `Start: look at the ${t} problem` },
+          { type: 'process', text: `Recall what ${t} means from the material` },
+          { type: 'decision', text: `Are the parts equal?`, yes: 'Yes', no: 'No' },
+          { type: 'process', text: `If yes, name the fraction; if no, split into equal parts first` },
+          { type: 'end', text: `Check your answer with a partner` },
+        ],
+      };
+    case 'pro_tip':
+      return {
+        label: 'Pro tips',
+        tips: [
+          `${intent}`,
+          `A common mistake in ${t} is forgetting the parts must be equal — check that first.`,
+          `Say the ${t} out loud: "how many parts, and how many are shaded?"`,
+        ],
+      };
+    case 'match_game':
+      return {
+        prompt: `Match each ${t} card to what it means.`,
+        pairs: [
+          { left: '1/2', right: 'one of two equal parts' },
+          { left: '1/4', right: 'one of four equal parts' },
+          { left: '3/4', right: 'three of four equal parts' },
+          { left: 'numerator', right: 'the parts we are talking about' },
+        ],
+      };
     default:
       return { text: intent };
   }
+}
+
+/* ----------------------------- MCQ: correct by construction ----------------------------- */
+
+// A deterministic hash so the correct option lands at a stable — but not always-first — slot.
+function hashInt(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+/**
+ * Build the 4 options + answerIndex from a {correctAnswer, distractors[]} shape, so the
+ * marked answer ALWAYS points at the correct text (the classic "index off by one" bug
+ * simply cannot happen). Dedupes, pads short distractor lists, keeps exactly 4 options.
+ */
+function assembleMcq(raw, topic) {
+  const correct = CLEAN(raw.correctAnswer);
+  const seen = new Set([correct.toLowerCase()]);
+  const dis = [];
+  for (const d of raw.distractors || []) {
+    const c = CLEAN(d);
+    if (c && !seen.has(c.toLowerCase())) { seen.add(c.toLowerCase()); dis.push(c); }
+    if (dis.length === 3) break;
+  }
+  const fillers = [
+    `A common mistake about ${topic}`,
+    `A tempting but wrong idea about ${topic}`,
+    `This mixes up two parts of ${topic}`,
+  ];
+  let fi = 0;
+  while (dis.length < 3) {
+    const base = fillers[fi % fillers.length];
+    const f = fi >= fillers.length ? `${base} (${fi})` : base;
+    fi++;
+    if (!seen.has(f.toLowerCase())) { seen.add(f.toLowerCase()); dis.push(f); }
+  }
+  const answerIndex = correct ? hashInt(correct + topic) % 4 : 0;
+  const options = [];
+  let di = 0;
+  for (let i = 0; i < 4; i++) options.push(i === answerIndex ? correct : dis[di++]);
+  return {
+    question: CLEAN(raw.question) || `Which is true about ${topic}?`,
+    options,
+    answerIndex,
+    explanation: CLEAN(raw.explanation) || `${correct} is the correct answer.`,
+  };
+}
+
+function mockMcq(spec, intent) {
+  const t = spec.topic;
+  return {
+    question: `Which statement about ${t} is correct?`,
+    correctAnswer: `${t} works only when the whole is split into equal parts`,
+    distractors: [
+      `The parts of ${t} do not need to be equal`,
+      `${t} always needs exactly two parts`,
+      `${t} has nothing to do with sharing a whole`,
+    ],
+    explanation: `${t} describes equal parts of a whole, so the parts must be equal.`,
+    narration: CLEAN(intent),
+  };
+}
+
+/** Live-only independent check that the proposed correct answer is actually correct. */
+async function verifyMcq({ question, correct, distractors, context }) {
+  if (provider() === 'mock') return null;   // deterministic offline; nothing to verify
+  const system = 'You are a strict answer-checker for school quizzes. Output ONLY JSON.';
+  const prompt = `Question: ${question}
+Proposed correct answer: ${correct}
+Other options: ${(distractors || []).join(' | ')}
+
+MATERIAL (the only source of truth — do not use outside knowledge that contradicts it):
+${context || '(none)'}
+
+Is the proposed correct answer actually correct for this question? If it is WRONG, give the
+text that IS correct (it may be one of the other options, or a short correction).
+Return ONLY: {"correct": boolean, "correctText": string, "explanation": "one sentence why"}`;
+  try {
+    const r = await completeJSON({ system, prompt, mock: { correct: true, correctText: correct, explanation: '' } });
+    if (r && r.correct === false && CLEAN(r.correctText)) {
+      return { correctText: CLEAN(r.correctText), explanation: CLEAN(r.explanation) };
+    }
+    if (r && CLEAN(r.explanation)) return { correctText: correct, explanation: CLEAN(r.explanation) };
+  } catch (e) {
+    console.warn(`[filler] mcq verify failed (${e.message}) — keeping generated answer`);
+  }
+  return null;
+}
+
+async function makeMcq({ intent, spec, prefs, complexity, extraInstruction, context }) {
+  const system = 'You write ONE multiple-choice question as JSON only. You never write HTML.';
+  const prompt = `Write ONE multiple-choice question for a lesson on "${spec.topic}", ${spec.board} grade ${spec.grade} ${spec.subject}.
+BLOCK INTENT: ${intent}
+${extraInstruction ? `TEACHER'S EDIT INSTRUCTION: ${extraInstruction}` : ''}
+${complexityDirective(complexity)}
+${prefsDirective(prefs)}
+
+Ground the question ONLY in this material; do not invent facts outside it:
+${context || '(no material retrieved — keep it safe and generic)'}
+
+Return ONLY this JSON, no wrapper:
+{"question": string, "correctAnswer": string, "distractors": [exactly 3 plausible but WRONG strings], "explanation": "one sentence on why the correct answer is right", "narration": "one sentence a teacher reads aloud"}
+Rules: the correctAnswer MUST be factually correct given the material. All three distractors MUST be wrong. Do NOT letter or number the options.`;
+
+  const mock = mockMcq(spec, intent);
+  let raw;
+  try { raw = await completeJSON({ system, prompt, mock }); }
+  catch (e) { console.warn(`[filler] mcq generation failed (${e.message}) — using safe fallback`); raw = mock; }
+  if (!raw || typeof raw !== 'object') raw = mock;
+
+  const question = CLEAN(raw.question) || mock.question;
+  let correct = CLEAN(raw.correctAnswer) || mock.correctAnswer;
+  const distractors = Array.isArray(raw.distractors) && raw.distractors.length ? raw.distractors : mock.distractors;
+  let explanation = CLEAN(raw.explanation) || `${correct} is correct.`;
+  const narration = CLEAN(raw.narration) || CLEAN(intent);
+
+  const verified = await verifyMcq({ question, correct, distractors, context });
+  if (verified?.correctText) correct = verified.correctText;
+  if (verified?.explanation) explanation = verified.explanation;
+
+  return { data: assembleMcq({ question, correctAnswer: correct, distractors, explanation }, spec.topic), narration };
+}
+
+/* --------------------------------- numeric repair --------------------------------- */
+
+// Light, deterministic repair so a slightly-off model response still renders correctly
+// (out-of-range number-line marks get dropped; the schema fallback catches the rest).
+function repairData(type, data) {
+  if (!data || typeof data !== 'object') return data;
+  if (type === 'number_line' && Array.isArray(data.marks)
+    && typeof data.min === 'number' && typeof data.max === 'number') {
+    data.marks = data.marks.filter(m => m && typeof m.value === 'number' && m.value >= data.min && m.value <= data.max);
+  }
+  if (type === 'flowchart' && Array.isArray(data.nodes)) {
+    // Guarantee a start and an end so the diagram always reads as a flow.
+    if (!data.nodes.some(n => n?.type === 'start') && data.nodes[0]) data.nodes[0].type = 'start';
+    if (!data.nodes.some(n => n?.type === 'end') && data.nodes.length) data.nodes[data.nodes.length - 1].type = 'end';
+  }
+  return data;
 }
 
 /**
@@ -103,12 +268,22 @@ export async function fillBlock({ type, intent, complexity, spec, prefs, extraIn
   });
 
   const context = chunks.map((ch, i) => `[${i + 1}] (${ch.attribution_string})\n${ch.content}`).join('\n\n');
-  const siblings = siblingSummaries.length
-    ? `\nOTHER BLOCKS IN THIS LESSON (read-only, do NOT rewrite them — just avoid repeating them):\n${siblingSummaries.map(s => `- ${s}`).join('\n')}`
-    : '';
 
-  const system = 'You write school lesson content as JSON only. You never write HTML, never add keys, never add prose outside the JSON.';
-  const prompt = `Write the DATA for one "${type}" block of a lesson.
+  let data;
+  let narration;
+
+  if (type === 'mcq') {
+    // Correct-by-construction + live verification (see makeMcq / verifyMcq).
+    const out = await makeMcq({ intent, spec, prefs, complexity: c, extraInstruction, context });
+    data = out.data;
+    narration = out.narration;
+  } else {
+    const siblings = siblingSummaries.length
+      ? `\nOTHER BLOCKS IN THIS LESSON (read-only, do NOT rewrite them — just avoid repeating them):\n${siblingSummaries.map(s => `- ${s}`).join('\n')}`
+      : '';
+
+    const system = 'You write school lesson content as JSON only. You never write HTML, never add keys, never add prose outside the JSON.';
+    const prompt = `Write the DATA for one "${type}" block of a lesson.
 Lesson ${spec.lessonIndex} of ${spec.nLessons} on "${spec.topic}". Board: ${spec.board}. Grade: ${spec.grade}. Subject: ${spec.subject}.
 BLOCK INTENT: ${intent}
 ${extraInstruction ? `TEACHER'S EDIT INSTRUCTION FOR THIS BLOCK: ${extraInstruction}` : ''}
@@ -126,17 +301,17 @@ Return ONLY this JSON shape, no wrapper:
 ${SHAPES[type] || '{"text": string}'}
 Also include a "narration" string key: one or two sentences a teacher could read aloud for this block.`;
 
-  const mock = { ...mockData(type, intent, spec, c), narration: `${intent}` };
-  let data;
-  try {
-    data = await completeJSON({ system, prompt, mock });
-  } catch (e) {
-    console.warn(`[filler] ${type} generation failed (${e.message}) — using safe fallback`);
-    data = mock;
+    const mock = { ...mockData(type, intent, spec, c), narration: `${intent}` };
+    try {
+      data = await completeJSON({ system, prompt, mock });
+    } catch (e) {
+      console.warn(`[filler] ${type} generation failed (${e.message}) — using safe fallback`);
+      data = mock;
+    }
+    narration = String(data?.narration ?? '');
+    if (data && typeof data === 'object') delete data.narration;
+    data = repairData(type, data);
   }
-
-  const narration = String(data?.narration ?? '');
-  if (data && typeof data === 'object') delete data.narration;
 
   const block = makeBlock({
     id: keepId,
@@ -159,7 +334,8 @@ Also include a "narration" string key: one or two sentences a teacher could read
 
 export const summarise = b => {
   const d = b.data || {};
-  const text = d.heading || d.title || d.question || d.text
-    || d.caption || d.steps?.[0]?.title || d.questions?.[0] || d.points?.[0] || '';
+  const text = d.heading || d.title || d.question || d.text || d.prompt || d.label
+    || d.caption || d.steps?.[0]?.title || d.nodes?.[0]?.text || d.pairs?.[0]?.left
+    || d.tips?.[0] || d.questions?.[0] || d.points?.[0] || '';
   return `${b.id} (${b.type}, C${b.complexity}): ${String(text).slice(0, 90)}`;
 };
