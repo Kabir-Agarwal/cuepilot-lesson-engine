@@ -1,0 +1,161 @@
+{
+  "id": "lsn_sample01",
+  "title": "Fractions: Equal Parts of a Whole",
+  "board": "CBSE",
+  "grade": "4",
+  "subject": "Mathematics",
+  "topic": "Fractions",
+  "nLessons": 3,
+  "lessonIndex": 1,
+  "durationMins": 45,
+  "defaultComplexity": 2,
+  "instructions": "Use roti and paper-folding examples. Go slow on equal parts.",
+  "timeFit": { "plannedMins": 44.4, "ok": true },
+  "blocks": [
+    {
+      "id": "b_hook01",
+      "type": "hook",
+      "complexity": 2,
+      "estMinutes": 3.6,
+      "narration": "Open by asking the class about sharing a roti.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": { "text": "Meena cuts one roti into 4 equal parts and eats one part. How much of the roti is left?" }
+    },
+    {
+      "id": "b_exp01",
+      "type": "explain",
+      "complexity": 2,
+      "estMinutes": 9.6,
+      "narration": "Name the two numbers in a fraction.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "heading": "What a fraction tells us",
+        "paragraphs": [
+          "When we break a whole thing into equal parts, each part is a fraction of the whole.",
+          "The number below the line is the denominator. It says how many equal parts the whole was broken into.",
+          "The number above the line is the numerator. It says how many of those parts we are talking about."
+        ]
+      }
+    },
+    {
+      "id": "b_nl01",
+      "type": "number_line",
+      "complexity": 2,
+      "estMinutes": 6,
+      "narration": "Hop along the fourths from zero to one.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "min": 0,
+        "max": 1,
+        "step": 0.25,
+        "marks": [
+          { "value": 0, "label": "0" },
+          { "value": 0.25, "label": "1/4" },
+          { "value": 0.5, "label": "2/4" },
+          { "value": 0.75, "label": "3/4" },
+          { "value": 1, "label": "1" }
+        ],
+        "question": "Tap each mark. Which mark lands on the same place as one half?"
+      }
+    },
+    {
+      "id": "b_bar01",
+      "type": "bar_compare",
+      "complexity": 2,
+      "estMinutes": 6,
+      "narration": "Compare the shaded lengths.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "items": [
+          { "label": "One third", "numerator": 1, "denominator": 3 },
+          { "label": "One sixth", "numerator": 1, "denominator": 6 },
+          { "label": "Three fifths", "numerator": 3, "denominator": 5 }
+        ],
+        "caption": "Same numerator? The smaller denominator makes the bigger piece."
+      }
+    },
+    {
+      "id": "b_seq01",
+      "type": "sequence",
+      "complexity": 2,
+      "estMinutes": 7.2,
+      "narration": "Fold the paper twice.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "steps": [
+          { "title": "Take a square of paper", "text": "Any square sheet works. This is your whole." },
+          { "title": "Fold it in half", "text": "Both halves must match exactly when you press them together." },
+          { "title": "Fold it in half again", "text": "Open it out. You now see four equal squares." },
+          { "title": "Shade one square", "text": "The shaded part is one-fourth of the paper. Write 1/4 on it." }
+        ]
+      }
+    },
+    {
+      "id": "b_mcq01",
+      "type": "mcq",
+      "complexity": 2,
+      "estMinutes": 4.8,
+      "narration": "Check the equal-parts idea.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "question": "A chapati is torn into two pieces. One piece is much bigger. Is the small piece one-half?",
+        "options": [
+          "Yes, because there are two pieces",
+          "No, because the two pieces are not equal",
+          "Yes, because half means two",
+          "No, because a chapati cannot be halved"
+        ],
+        "answerIndex": 1,
+        "explanation": "Half means the two pieces are exactly the same size. Unequal pieces are not halves."
+      }
+    },
+    {
+      "id": "b_act01",
+      "type": "activity",
+      "complexity": 2,
+      "estMinutes": 14.4,
+      "narration": "Pair work with paper strips.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "title": "Paper strip fraction hunt",
+        "materials": ["paper strips", "crayons", "scissors"],
+        "instructions": [
+          "Work in pairs. Each pair takes two paper strips of the same length.",
+          "Fold one strip into 2 equal parts and the other into 4 equal parts.",
+          "Shade 1 part of the first strip and 2 parts of the second strip.",
+          "Place the strips side by side. Are the shaded lengths the same?",
+          "Write what you found in one sentence."
+        ]
+      }
+    },
+    {
+      "id": "b_exit01",
+      "type": "exit_ticket",
+      "complexity": 2,
+      "estMinutes": 4.8,
+      "narration": "Two quick questions before the bell.",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "questions": [
+          "Draw a circle cut into 4 equal parts and shade 3 of them. Write the fraction.",
+          "Which is bigger, 1/3 or 1/6? Say why in one sentence."
+        ]
+      }
+    },
+    {
+      "id": "b_tn01",
+      "type": "teacher_notes",
+      "complexity": 2,
+      "estMinutes": 0,
+      "narration": "",
+      "sourceRefs": [{ "sourceId": "M001", "sourceName": "fractions.txt", "attribution": "Teacher upload, fractions.txt" }],
+      "data": {
+        "points": [
+          "Many children say 1/6 is bigger than 1/3 because 6 is bigger. Use the paper strips, not words.",
+          "Insist on the word 'equal' every time a part is named.",
+          "If time runs short, move the paper strip hunt to homework."
+        ]
+      }
+    }
+  ]
+}
