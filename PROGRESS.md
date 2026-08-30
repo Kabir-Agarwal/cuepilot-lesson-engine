@@ -4,3 +4,4 @@
 - 2026-08-30 — v8.3: teammate patch (requestedBlocks, streaming, reorder, multi-resource) + verifier agent + LLM model-selection/resilience + Alchemyst SDK — 95%
 - 2026-08-30 — Alchemyst SDK add+search returning OK (400s fixed); model chain resolved via ListModels; pushed to github.com/Kabir-Agarwal/cuepilot-lesson-engine — 98%
 - 2026-08-30 — checkkeys + realrun live (Gemini subject to 503 high-demand; degrades to mock) — 100% target
+- 2026-08-30 — v8.4: visual-demand slider (1-5 representation density), independent of complexity; per-block retype; 38 tests — 100%
